@@ -1,0 +1,1 @@
+# Differential Geometric Edge Detector
