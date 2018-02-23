@@ -10,35 +10,7 @@ L = float.(Colors.Gray.(img_scaled))
 Ay = Array(parent(Kernel.ando5()[1]))
 Ax = Array(parent(Kernel.ando5()[2]))
 
-function image_derivative_kernel(ker, kers...)
-    for kernel in kers
-        ker = conv2(ker, kernel)
-    end
-    return ker
-end
-
-function image_derivative(I, kers...)
-    kernel = image_derivative_kernel(kers...)
-    return imfilter(I, reflect(centered(kernel)))
-end
-
-function image_scale_derivative(L, kers...)
-    return mapslices(Ls->image_derivative(Ls, kers...), L, (1,2))
-end
-
-Lx = image_scale_derivative(L, Ax)
-Ly = image_scale_derivative(L, Ay)
-
-Lxx = image_scale_derivative(L, Ax, Ax)
-Lxy = image_scale_derivative(L, Ax, Ay)
-Lyy = image_scale_derivative(L, Ay, Ay)
-
-Lxxx = image_scale_derivative(L, Ax, Ax, Ax)
-Lxxy = image_scale_derivative(L, Ax, Ax, Ay)
-Lxyy = image_scale_derivative(L, Ax, Ay, Ay)
-Lyyy = image_scale_derivative(L, Ay, Ay, Ay)
-
-# Lx, Ly = imgradients(L, KernelFactors.ando3)
+Lx, Ly = imgradients(L, KernelFactors.ando3)
 for (i, scale) in enumerate(scales)
     Lx[:,:,i] *= scale ^ 0.5
     Ly[:,:,i] *= scale ^ 0.5
@@ -46,11 +18,11 @@ end
 
 Lgrad = sqrt.(Lx.^2 + Ly.^2)
 
-# Lxy, Lxx = imgradients(Lx, KernelFactors.ando3)
-# Lyy, Lyx = imgradients(Ly, KernelFactors.ando3)
-# Lxxy, Lxxx = imgradients(Lxx, KernelFactors.ando3)
-# Lxyy, Lxyx = imgradients(Lxy, KernelFactors.ando3)
-# Lyyy, Lyyx = imgradients(Lyy, KernelFactors.ando3)
+Lxy, Lxx = imgradients(Lx, KernelFactors.ando3)
+Lyy, Lyx = imgradients(Ly, KernelFactors.ando3)
+Lxxy, Lxxx = imgradients(Lxx, KernelFactors.ando3)
+Lxyy, Lxyx = imgradients(Lxy, KernelFactors.ando3)
+Lyyy, Lyyx = imgradients(Lyy, KernelFactors.ando3)
 
 Lvv = Lx.^2.*Lxx + 2Lx.*Ly.*Lxy + Ly.^2.*Lyy
 Lvvv = Lx.^3.*Lxxx + 3Lx.^2.*Ly.*Lxxy + 3Lx.*Ly.^2.*Lxyy + Ly.^3.*Lyyy
