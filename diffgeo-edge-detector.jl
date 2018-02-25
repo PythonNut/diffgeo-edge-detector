@@ -4,7 +4,7 @@ using Base.Cartesian
 img = testimage("mandrill");
 
 scales = exp.(linspace(0,log(50),40))
-img_scaled = cat(3,(imfilter(img, reflect(Kernel.gaussian(t))) for t in scales)...)
+img_scaled = cat(3,(imfilter(img, reflect(Kernel.gaussian((t, t), (ceil(Int, t)*8+1, ceil(Int, t)*8+1)))) for t in scales)...)
 L = float.(Colors.Gray.(img_scaled))
 
 Ay = Array(parent(Kernel.ando5()[1]))
