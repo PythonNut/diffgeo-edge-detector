@@ -2,6 +2,7 @@ using ImageFiltering
 using TestImages
 using ImageView
 using SymPy
+using Base.Cartesian
 
 # Parameters
 gamma = 1/2
@@ -70,45 +71,79 @@ for (i, scale) in enumerate(scales)
     ELtt[:,:,i] = float(Ett(scale)) * L[:,:,i] + float(Et(scale))*(Lxx[:,:,i] + Lyy[:,:,i]) + (Lxxxx[:,:,i] + 2Lxxyy[:,:,i] + Lyyyy[:,:,i])/4 * float(E(scale))
 end
 
-
-# March ourselves some cubes
-voxel_visited = zeros(Bool, (x->x-1).(size(L)))
-
-function linear_interpolate(v1, v2)
-    return abs(v2)/(abs(v1) + abs(v2))
+function linear_interpolate(p1, p2, v1, v2)
+    return (abs(v1)*v1 + abs(v2)*v2)/(abs(v1) + abs(v2))
 end
 
-function marching_cubes(x, y, t)
-    corners = (x:x+1, y:y+1, z:z+1)
+function segment_intersect(p1, p2, p3, p4, e)
+    p13, p43, p21 = p1 - p3, p4 - p3, p2 - p1
+
+    # If the line segments have zero length
+    if norm(p43) < e || norm(p21) < e
+        return Nullable()
+    end
+
+    d1343 = dot(p13, p43)
+    d4321 = dot(p43, p21)
+    d1321 = dot(p13, p21)
+    d4343 = dot(p43, p43)
+    d2121 = dot(p21, p21)
+
+    numer = d1343 * d4321 - d1321 * d4343;
+    denom = d2121 * d4343 - d4321 * d4321;
+
+    if abs(denom) < e
+        return Nullable()
+    end
+
+    mua = numer/denom
+    mub = (d1343 + d4321 * mua) / d4343
+    pa = p1 + mua * p21
+    pb = p3 + mub * p43
+
+    return Nullable((norm(pa - pb), (pa + pb)/2))
+end
+
+cube_edges = [
+    # bottom edges
+    ([1,1,1], [1,2,1]),
+    ([1,2,1], [2,2,1]),
+    ([2,2,1], [2,1,1]),
+    ([2,1,1], [1,1,1]),
+
+    # side edges
+    ([1,1,1], [1,1,2]),
+    ([1,2,1], [1,2,2]),
+    ([2,2,1], [2,2,2]),
+    ([2,1,1], [2,1,2]),
+
+    # top edges
+    ([1,1,2], [1,2,2]),
+    ([1,2,2], [2,2,2]),
+    ([2,2,2], [2,1,2]),
+    ([2,1,2], [1,1,2])
+]
+
+cube_faces =  [
+    ([ 0, 0,-1], ([1,1,1], [2,1,1], [1,2,1], [2,2,1])),
+    ([ 0,-1, 0], ([1,1,1], [2,1,1], [1,1,2], [2,1,2])),
+    ([ 1, 0, 0], ([2,1,1], [2,1,2], [2,2,2], [2,2,1])),
+    ([-1, 0, 0], ([1,1,1], [1,1,2], [1,2,1], [1,2,2])),
+    ([ 0, 1, 0], ([1,2,1], [2,2,1], [1,2,2], [2,2,2])),
+    ([ 0, 0, 1], ([1,1,2], [1,2,2], [2,2,2], [2,1,2]))
+]
+
+function marching_cubes(x, y, t, visited)
+    if visited[x, y, t]
+        return Set()
+    end
+    visited[x, y, t] = true
+    const corners = (x:x+1, y:y+1, t:t+1)
 
     # Note: Maybe they don't need to be in the same corner
     if !any((view(Lvvv, corners...) .< 0) .& (view(ELtt, corners...) .< 0))
-        return
+        return Set()
     end
-
-    const edges = [
-        # bottom edges
-        ((0,0,0), (0,1,0)),
-        ((0,1,0), (1,1,0)),
-        ((1,1,0), (1,0,0)),
-        ((1,0,0), (0,0,0)),
-
-        # side edges
-        ((0,0,0), (0,0,1)),
-        ((0,1,0), (0,1,1)),
-        ((1,1,0), (1,1,1)),
-        ((1,0,0), (1,0,1)),
-
-        # top edges
-        ((0,0,1), (0,1,1)),
-        ((0,1,1), (1,1,1)),
-        ((1,1,1), (1,0,1)),
-        ((1,0,1), (0,0,1)),
-    ]
-
-    const faces = [
-        (())
-    ]
 
     Z1 = view(Lvv, corners...)
     Z2 = view(ELt, corners...)
@@ -116,31 +151,121 @@ function marching_cubes(x, y, t)
     Z2_crossings = []
 
     # Find all sign crossings w/ linear interpolation
-    for (a, b) in edges
+    for (a, b) in cube_edges
         if sign(Z1[a...]) != sign(Z1[b...])
-            push!(Z1_crossings, (a,b)=>linear_interpolate(Z1[a...], Z1[b...]))
+            push!(Z1_crossings, (a, b, linear_interpolate(a, b, Z1[a...], Z1[b...])))
         end
 
         if sign(Z2[a...]) != sign(Z2[b...])
-            push!(Z2_crossings, (a,b)=>linear_interpolate(Z2[a...], Z2[b...]))
+            push!(Z2_crossings, (a, b, linear_interpolate(a, b, Z2[a...], Z2[b...])))
         end
     end
 
-    # Reject if there are more than two crossings for either invariant
-    if length(Z1_crossings) != 2 || length(Z2_crossings) != 2
-        return
-    end
+    const epsilon = 0.01
 
-    # Ensure the edges
-    for dim in 1:3
-        if length(unique(
-            map(x->x.first[dim], Z1_crossings),
-            map(x->x.second[dim], Z1_crossings),
-            map(x->x.first[dim], Z2_crossings),
-            map(x->x.second[dim], Z2_crossings))) == 2
-            return
+    result = Set()
+    for (normal, face) in cube_faces
+        Z1_zeros = []
+        Z2_zeros = []
+        for (a, b, mid) in Z1_crossings
+            if a in face && b in face
+                push!(Z1_zeros, mid)
+            end
         end
+
+        for (a, b, mid) in Z2_crossings
+            if a in face && b in face
+                push!(Z2_zeros, mid)
+            end
+        end
+
+        # Reject if there are more than two crossings for either invariant
+        if !(length(Z1_zeros) == length(Z2_zeros) == 2)
+            continue
+        end
+
+        # Check the intersection of the segments defined by the two lines
+        intersect = segment_intersect(Z1_crossings..., Z2_crossings..., epsilon)
+        if isnull(intersect)
+            continue
+        end
+
+        # Check that the intersection lies on a face
+        distance, midpoint = intersect
+
+        # if !all(-eps < x < eps || 1-eps < x < 1+eps for x in midpoint)
+        #     return
+        # end
+
+        if distance > epsilon
+            continue
+        end
+
+        xprime, yprime, tprime = [x, y, t] + normal
+        if !(1 <= xprime <= size(visited)[1] &&
+             1 <= yprime <= size(visited)[2] &&
+             1 <= tprime <= size(visited)[3])
+            continue
+        end
+
+        result = union(result, marching_cubes(xprime, yprime, tprime, visited))
     end
 
+    if length(result) > 0
+        push!(result, (x, y, t))
+    end
 
+    return result
+end
+
+S12 = (Lvvv .< 0) .& (ELtt .< 0)
+
+function marching_cubes2(x, y, t, visited)
+    # Faster but dumber version?
+    # Still too slow...
+    if !(1 <= x <= size(visited)[1] &&
+         1 <= y <= size(visited)[2] &&
+         1 <= t <= size(visited)[3])
+        return Set()
+    end
+
+    if visited[x, y, t]
+        return Set()
+    end
+
+    visited[x, y, t] = true
+    const corners = (x:x+1, y:y+1, t:t+1)
+
+    # Note: Maybe they don't need to be in the same corner
+    if !any(S12[corners...] .< 0)
+        return Set()
+    end
+
+    Z1 = Lvv[corners...]
+    Z2 = ELt[corners...]
+
+    if all(Z1 .< 0) || all(Z1 .> 0) || all(Z2 .< 0) || all(Z2 .> 0)
+        return Set()
+    end
+
+    result = Set([(x, y, t)])
+    result = union(result, marching_cubes2(x-1, y, t, visited))
+    result = union(result, marching_cubes2(x+1, y, t, visited))
+    result = union(result, marching_cubes2(x, y-1, t, visited))
+    result = union(result, marching_cubes2(x, y+1, t, visited))
+    result = union(result, marching_cubes2(x, y, t-1, visited))
+    result = union(result, marching_cubes2(x, y, t+1, visited))
+    return result
+end
+
+# March ourselves some cubes
+voxel_visited = zeros(Bool, (x->x-1).(size(L)))
+
+edges = []
+@nloops 3 i voxel_visited begin
+    edge = marching_cubes2((@ntuple 3 i)..., voxel_visited)
+    if length(edge) > 0
+        push!(edges, edge)
+    end
+    println((@ntuple 3 i))
 end
