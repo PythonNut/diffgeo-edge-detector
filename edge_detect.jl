@@ -1,12 +1,11 @@
 using ImageFiltering
 using TestImages
 using ImageView
-using SymPy
 using Base.Cartesian
 
 # Parameters
 gamma = 1/2
-scales = exp.(linspace(0,log(50),40))
+scales = exp.(linspace(0, log(50), 40))
 
 # Load the image
 img = float.(Colors.Gray.(testimage("mandrill")))
@@ -52,27 +51,32 @@ Lxxy = convolve_scale_space(Lxx, Dy)
 Lxyy = convolve_scale_space(Lxy, Dy)
 Lyyy = convolve_scale_space(Lyy, Dy)
 
-Lxxxx = convolve_scale_space(Lxxx, Dx)
+# Lxxxx = convolve_scale_space(Lxxx, Dx)
 # Lxxxy = convolve_scale_space(Lxxx, Dy)
-Lxxyy = convolve_scale_space(Lxxy, Dy)
+# Lxxyy = convolve_scale_space(Lxxy, Dy)
 # Lxyyy = convolve_scale_space(Lxyy, Dy)
-Lyyyy = convolve_scale_space(Lyyy, Dy)
+# Lyyyy = convolve_scale_space(Lyyy, Dy)
 
-t = Sym("t")
-E = t^gamma
-Et, Ett = diff(E, t), diff(E, t, t)
+Lxxxxx = convolve_scale_space(Lxxx, Dx, Dx)
+Lxxxxy = convolve_scale_space(Lxxx, Dx, Dy)
+Lxxxyy = convolve_scale_space(Lxxx, Dy, Dy)
+Lxxyyy = convolve_scale_space(Lxxy, Dy, Dy)
+Lxyyyy = convolve_scale_space(Lxyy, Dy, Dy)
+Lyyyyy = convolve_scale_space(Lyyy, Dy, Dy)
 
 Lvv = Lx.^2.*Lxx + 2Lx.*Ly.*Lxy + Ly.^2.*Lyy
-Lvvv = Lx.^3.*Lxxx + 3Lx.^2.*Ly.*Lxxy + 3Lx.*Ly.^2.*Lxyy + Ly.^3.*Lyyy
+Lvvv = (Lx.^3.*Lxxx + 3Lx.^2.*Ly.*Lxxy + 3Lx.*Ly.^2.*Lxyy + Ly.^3.*Lyyy) .> 0
 
-ELt, ELtt = zeros(L), zeros(L)
-for (i, scale) in enumerate(scales)
-    ELt[:,:,i] = float(Et(scale)) * L[:,:,i] + (Lxx[:,:,i] + Lyy[:,:,i])/2 * float(E(scale))
-    ELtt[:,:,i] = float(Ett(scale)) * L[:,:,i] + float(Et(scale))*(Lxx[:,:,i] + Lyy[:,:,i]) + (Lxxxx[:,:,i] + 2Lxxyy[:,:,i] + Lyyyy[:,:,i])/4 * float(E(scale))
-end
+scales3 = reshape(scales, 1, 1, length(scales))
+
+GLt = gamma.*scales3.^(gamma-1) .* (Lx.^2 + Ly.^2) + scales3.^gamma.*(Lx.*(Lxxx + Lxyy) + Ly.*(Lxxy + Lyyy))
+
+GLtt = (gamma.*(gamma - 1).*scales3.^(gamma - 2).*(Lx.^2 + Ly.^2) + 2gamma.*scales3.^(gamma-1).*(Lx.*(Lxxx + Lxyy) + Ly.*(Lxxy + Lyyy)) + scales3.^gamma/2.*((Lxxx + Lxyy).^2 + (Lxxy + Lyyy).^2 + Lx.*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly.*(Lxxxxy + 2Lxxyyy + Lyyyyy))) .> 0
+
+Z12 = Lvvv .| GLtt
 
 function linear_interpolate(p1, p2, v1, v2)
-    return (abs(v1)*v1 + abs(v2)*v2)/(abs(v1) + abs(v2))
+    return (abs(v1)*p1 + abs(v2)*p2)/(abs(v1) + abs(v2))
 end
 
 function segment_intersect(p1, p2, p3, p4, e)
@@ -137,18 +141,17 @@ function marching_cubes(x, y, t, visited)
     if visited[x, y, t]
         return Set()
     end
+
     visited[x, y, t] = true
     const corners = (x:x+1, y:y+1, t:t+1)
 
     # Note: Maybe they don't need to be in the same corner
-    if !any((view(Lvvv, corners...) .< 0) .& (view(ELtt, corners...) .< 0))
+    if !any(view(Z12, corners...))
         return Set()
     end
 
-    Z1 = view(Lvv, corners...)
-    Z2 = view(ELt, corners...)
-    Z1_crossings = []
-    Z2_crossings = []
+    Z1, Z2 = view(Lvv, corners...), view(GLt, corners...)
+    Z1_crossings, Z2_crossings = [], []
 
     # Find all sign crossings w/ linear interpolation
     for (a, b) in cube_edges
@@ -185,78 +188,72 @@ function marching_cubes(x, y, t, visited)
         end
 
         # Check the intersection of the segments defined by the two lines
-        intersect = segment_intersect(Z1_crossings..., Z2_crossings..., epsilon)
+        intersect = segment_intersect(Z1_zeros..., Z2_zeros..., epsilon)
         if isnull(intersect)
             continue
         end
 
         # Check that the intersection lies on a face
-        distance, midpoint = intersect
-
-        # if !all(-eps < x < eps || 1-eps < x < 1+eps for x in midpoint)
-        #     return
-        # end
-
+        distance, midpoint = get(intersect)
         if distance > epsilon
             continue
         end
 
         xprime, yprime, tprime = [x, y, t] + normal
-        if !(1 <= xprime <= size(visited)[1] &&
-             1 <= yprime <= size(visited)[2] &&
-             1 <= tprime <= size(visited)[3])
+        if !all(1 .<= [xprime, yprime, tprime] .<= size(visited))
             continue
         end
 
-        result = union(result, marching_cubes(xprime, yprime, tprime, visited))
+        intersection_found = true
+        union!(result, marching_cubes(xprime, yprime, tprime, visited))
     end
 
-    if length(result) > 0
+    if intersection_found
         push!(result, (x, y, t))
     end
 
     return result
 end
 
-S12 = (Lvvv .< 0) .& (ELtt .< 0)
+# S12 = (Lvvv .< 0) .& (ELtt .< 0)
 
-function marching_cubes2(x, y, t, visited)
-    # Faster but dumber version?
-    # Still too slow...
-    if !(1 <= x <= size(visited)[1] &&
-         1 <= y <= size(visited)[2] &&
-         1 <= t <= size(visited)[3])
-        return Set()
-    end
+# function marching_cubes2(x, y, t, visited)
+#     # Faster but dumber version?
+#     # Still too slow...
+#     if !(1 <= x <= size(visited)[1] &&
+#          1 <= y <= size(visited)[2] &&
+#          1 <= t <= size(visited)[3])
+#         return Set()
+#     end
 
-    if visited[x, y, t]
-        return Set()
-    end
+#     if visited[x, y, t]
+#         return Set()
+#     end
 
-    visited[x, y, t] = true
-    const corners = (x:x+1, y:y+1, t:t+1)
+#     visited[x, y, t] = true
+#     const corners = (x:x+1, y:y+1, t:t+1)
 
-    # Note: Maybe they don't need to be in the same corner
-    if !any(S12[corners...] .< 0)
-        return Set()
-    end
+#     # Note: Maybe they don't need to be in the same corner
+#     if !any(S12[corners...] .< 0)
+#         return Set()
+#     end
 
-    Z1 = Lvv[corners...]
-    Z2 = ELt[corners...]
+#     Z1 = Lvv[corners...]
+#     Z2 = ELt[corners...]
 
-    if all(Z1 .< 0) || all(Z1 .> 0) || all(Z2 .< 0) || all(Z2 .> 0)
-        return Set()
-    end
+#     if all(Z1 .< 0) || all(Z1 .> 0) || all(Z2 .< 0) || all(Z2 .> 0)
+#         return Set()
+#     end
 
-    result = Set([(x, y, t)])
-    result = union(result, marching_cubes2(x-1, y, t, visited))
-    result = union(result, marching_cubes2(x+1, y, t, visited))
-    result = union(result, marching_cubes2(x, y-1, t, visited))
-    result = union(result, marching_cubes2(x, y+1, t, visited))
-    result = union(result, marching_cubes2(x, y, t-1, visited))
-    result = union(result, marching_cubes2(x, y, t+1, visited))
-    return result
-end
+#     result = Set([(x, y, t)])
+#     result = union(result, marching_cubes2(x-1, y, t, visited))
+#     result = union(result, marching_cubes2(x+1, y, t, visited))
+#     result = union(result, marching_cubes2(x, y-1, t, visited))
+#     result = union(result, marching_cubes2(x, y+1, t, visited))
+#     result = union(result, marching_cubes2(x, y, t-1, visited))
+#     result = union(result, marching_cubes2(x, y, t+1, visited))
+#     return result
+# end
 
 
 function find_edges()
