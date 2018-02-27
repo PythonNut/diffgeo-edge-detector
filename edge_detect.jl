@@ -4,7 +4,7 @@ using ImageView
 using Base.Cartesian
 
 # Parameters
-gamma = 1/2
+gamma = 1
 scales = exp.(linspace(0, log(50), 40))
 
 # Load the image
