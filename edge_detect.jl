@@ -164,7 +164,7 @@ function marching_cubes(x, y, t, visited)
         end
     end
 
-    const epsilon = 0.01
+    const epsilon = 0.000001
 
     face_intersections = []
     result = Set()
