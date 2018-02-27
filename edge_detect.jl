@@ -258,14 +258,18 @@ function marching_cubes2(x, y, t, visited)
     return result
 end
 
-# March ourselves some cubes
-voxel_visited = zeros(Bool, (x->x-1).(size(L)))
 
-edges = []
-@nloops 3 i voxel_visited begin
-    edge = marching_cubes2((@ntuple 3 i)..., voxel_visited)
-    if length(edge) > 0
-        push!(edges, edge)
+function find_edges()
+    voxel_visited = falses((x->x-1).(size(L)))
+    edges = []
+    @nloops 3 i voxel_visited begin
+        edge = marching_cubes((@ntuple 3 i)..., voxel_visited)
+        if length(edge) > 0
+            push!(edges, edge)
+        end
+        if i_1 == 1
+            println(@ntuple 3 i)
+        end
     end
-    println((@ntuple 3 i))
+    return edges
 end
