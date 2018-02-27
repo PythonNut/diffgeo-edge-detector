@@ -108,7 +108,7 @@ function segment_intersect(p1, p2, p3, p4, e)
     return Nullable((norm(pa - pb), (pa + pb)/2))
 end
 
-cube_edges = [
+const cube_edges = [
     # bottom edges
     ([1,1,1], [1,2,1]),
     ([1,2,1], [2,2,1]),
@@ -128,7 +128,7 @@ cube_edges = [
     ([2,1,2], [1,1,2])
 ]
 
-cube_faces =  [
+const cube_faces =  [
     ([ 0, 0,-1], ([1,1,1], [2,1,1], [1,2,1], [2,2,1])),
     ([ 0,-1, 0], ([1,1,1], [2,1,1], [1,1,2], [2,1,2])),
     ([ 1, 0, 0], ([2,1,1], [2,1,2], [2,2,2], [2,2,1])),
@@ -166,6 +166,7 @@ function marching_cubes(x, y, t, visited)
 
     const epsilon = 0.01
 
+    intersection_found = false
     result = Set()
     for (normal, face) in cube_faces
         Z1_zeros = []
