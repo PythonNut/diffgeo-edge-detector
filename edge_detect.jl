@@ -216,47 +216,6 @@ function marching_cubes(x, y, t, visited)
     return result
 end
 
-# S12 = (Lvvv .< 0) .& (ELtt .< 0)
-
-# function marching_cubes2(x, y, t, visited)
-#     # Faster but dumber version?
-#     # Still too slow...
-#     if !(1 <= x <= size(visited)[1] &&
-#          1 <= y <= size(visited)[2] &&
-#          1 <= t <= size(visited)[3])
-#         return Set()
-#     end
-
-#     if visited[x, y, t]
-#         return Set()
-#     end
-
-#     visited[x, y, t] = true
-#     const corners = (x:x+1, y:y+1, t:t+1)
-
-#     # Note: Maybe they don't need to be in the same corner
-#     if !any(S12[corners...] .< 0)
-#         return Set()
-#     end
-
-#     Z1 = Lvv[corners...]
-#     Z2 = ELt[corners...]
-
-#     if all(Z1 .< 0) || all(Z1 .> 0) || all(Z2 .< 0) || all(Z2 .> 0)
-#         return Set()
-#     end
-
-#     result = Set([(x, y, t)])
-#     result = union(result, marching_cubes2(x-1, y, t, visited))
-#     result = union(result, marching_cubes2(x+1, y, t, visited))
-#     result = union(result, marching_cubes2(x, y-1, t, visited))
-#     result = union(result, marching_cubes2(x, y+1, t, visited))
-#     result = union(result, marching_cubes2(x, y, t-1, visited))
-#     result = union(result, marching_cubes2(x, y, t+1, visited))
-#     return result
-# end
-
-
 function find_edges()
     voxel_visited = falses((x->x-1).(size(L)))
     edges = []
