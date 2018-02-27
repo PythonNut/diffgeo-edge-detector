@@ -166,7 +166,7 @@ function marching_cubes(x, y, t, visited)
 
     const epsilon = 0.01
 
-    intersection_found = false
+    face_intersections = []
     result = Set()
     for (normal, face) in cube_faces
         Z1_zeros = []
@@ -200,16 +200,16 @@ function marching_cubes(x, y, t, visited)
             continue
         end
 
-        xprime, yprime, tprime = [x, y, t] + normal
-        if !all(1 .<= [xprime, yprime, tprime] .<= size(visited))
-            continue
-        end
-
-        intersection_found = true
-        union!(result, marching_cubes(xprime, yprime, tprime, visited))
+        push!(face_intersections, normal)
     end
 
-    if intersection_found
+    if length(face_intersections) == 2
+        for normal in face_intersections
+            next_voxel = [x, y, t] + normal
+            if all(1 .<= next_voxel .<= size(visited))
+                union!(result, marching_cubes(next_voxel..., visited))
+            end
+        end
         push!(result, (x, y, t))
     end
 
