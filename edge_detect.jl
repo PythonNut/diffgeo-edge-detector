@@ -24,7 +24,7 @@ end
 
 function convolve_image(I, kers...)
     kernel = combine_kernels(kers...)
-    return imfilter(I, reflect(centered(kernel)))
+    return imfilter(I, centered(kernel))
 end
 
 function convolve_scale_space(L, kers...)
