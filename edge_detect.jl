@@ -2,6 +2,7 @@ using ImageFiltering
 using TestImages
 using ImageView
 using Base.Cartesian
+using ProgressMeter
 
 # Parameters
 gamma = 1
@@ -220,14 +221,13 @@ end
 function find_edges()
     voxel_visited = falses((x->x-1).(size(L)))
     edges = []
+    p = Progress(prod(size(voxel_visited)), 1)
     @nloops 3 i voxel_visited begin
         edge = marching_cubes((@ntuple 3 i)..., voxel_visited)
         if length(edge) > 0
             push!(edges, edge)
         end
-        if i_1 == 1
-            println(@ntuple 3 i)
-        end
+        next!(p)
     end
     return edges
 end
