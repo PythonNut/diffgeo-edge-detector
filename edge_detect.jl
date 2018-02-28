@@ -146,7 +146,7 @@ function marching_cubes(x, y, t, visited)
     const corners = (x:x+1, y:y+1, t:t+1)
 
     # Note: Maybe they don't need to be in the same corner
-    if !any(view(Z12, corners...))
+    if !(any(view(GLtt, corners...)) && any(view(Lvvv, corners...)))
         return Set()
     end
 
