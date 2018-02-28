@@ -230,3 +230,12 @@ function find_edges()
     end
     return edges
 end
+
+function flatten_edges(edges)
+    edge_flat = reduce(union, edges)
+    edge_map = falses((x->x-1).(size(L)))
+    for (x, y, t) in union(edge_flat)
+        edge_map[x,y,t] = true
+    end
+    return edge_map
+end
