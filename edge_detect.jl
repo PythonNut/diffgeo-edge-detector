@@ -15,6 +15,9 @@ img = float.(Colors.Gray.(testimage("mandrill")))
 Dy = Array(parent(Kernel.ando5()[1]))
 Dx = Array(parent(Kernel.ando5()[2]))
 
+Dx /= sum(Dx .* (Dx .> 0))
+Dy /= sum(Dy .* (Dy .> 0))
+
 function combine_kernels(kers...)
     return reduce(conv2, kers)
 end
