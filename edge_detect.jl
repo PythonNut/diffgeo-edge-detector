@@ -201,7 +201,7 @@ function marching_cubes(x, y, t, visited)
 
         # Check that the intersection lies on a face
         distance, midpoint = get(intersect)
-        if distance > epsilon || !all(1 .< midpoint .<= 2)
+        if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
             continue
         end
 
