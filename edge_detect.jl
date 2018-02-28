@@ -3,6 +3,7 @@ using TestImages
 using ImageView
 using Base.Cartesian
 using ProgressMeter
+using FileIO
 
 # Parameters
 gamma = 1
@@ -286,4 +287,19 @@ function edge_importance(edge)
         total += sqrt(GL[x,y,t])
     end
     return total
+end
+
+function n_strongest_edges(edges, n)
+    return sort(edges, by=edge_importance, rev=true)[1:n]
+end
+
+function flatten_scale(Lp)
+    return mapslices(any, Lp, 3)
+end
+
+function main()
+    edges = find_edges()
+    n_strongest = n_strongest_edges(edges, 500)
+    edge_flat = flatten_edges(n_strongest)
+    save("output.png", flatten_scale(edge_flat))
 end
