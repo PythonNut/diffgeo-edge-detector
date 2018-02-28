@@ -76,7 +76,7 @@ const GLtt = (gamma.*(gamma - 1).*scales3.^(gamma - 2).*(Lx.^2 + Ly.^2) + 2gamma
 Z12 = Lvvv .& GLtt
 
 function linear_interpolate(p1, p2, v1, v2)
-    return (abs(v1)*p1 + abs(v2)*p2)/(abs(v1) + abs(v2))
+    return (abs(v1)*collect(p1) + abs(v2)*collect(p2))/(abs(v1) + abs(v2))
 end
 
 function segment_intersect(p1, p2, p3, p4, e)
@@ -110,31 +110,31 @@ end
 
 const cube_edges = [
     # bottom edges
-    ([1,1,1], [1,2,1]),
-    ([1,2,1], [2,2,1]),
-    ([2,2,1], [2,1,1]),
-    ([2,1,1], [1,1,1]),
+    ((1,1,1), (1,2,1)),
+    ((1,2,1), (2,2,1)),
+    ((2,2,1), (2,1,1)),
+    ((2,1,1), (1,1,1)),
 
     # side edges
-    ([1,1,1], [1,1,2]),
-    ([1,2,1], [1,2,2]),
-    ([2,2,1], [2,2,2]),
-    ([2,1,1], [2,1,2]),
+    ((1,1,1), (1,1,2)),
+    ((1,2,1), (1,2,2)),
+    ((2,2,1), (2,2,2)),
+    ((2,1,1), (2,1,2)),
 
     # top edges
-    ([1,1,2], [1,2,2]),
-    ([1,2,2], [2,2,2]),
-    ([2,2,2], [2,1,2]),
-    ([2,1,2], [1,1,2])
+    ((1,1,2), (1,2,2)),
+    ((1,2,2), (2,2,2)),
+    ((2,2,2), (2,1,2)),
+    ((2,1,2), (1,1,2))
 ]
 
 const cube_faces =  [
-    ([ 0, 0,-1], ([1,1,1], [2,1,1], [1,2,1], [2,2,1])),
-    ([ 0,-1, 0], ([1,1,1], [2,1,1], [1,1,2], [2,1,2])),
-    ([ 1, 0, 0], ([2,1,1], [2,1,2], [2,2,2], [2,2,1])),
-    ([-1, 0, 0], ([1,1,1], [1,1,2], [1,2,1], [1,2,2])),
-    ([ 0, 1, 0], ([1,2,1], [2,2,1], [1,2,2], [2,2,2])),
-    ([ 0, 0, 1], ([1,1,2], [1,2,2], [2,2,2], [2,1,2]))
+    ([ 0, 0,-1], ((1,1,1), (2,1,1), (1,2,1), (2,2,1))),
+    ([ 0,-1, 0], ((1,1,1), (2,1,1), (1,1,2), (2,1,2))),
+    ([ 1, 0, 0], ((2,1,1), (2,1,2), (2,2,2), (2,2,1))),
+    ([-1, 0, 0], ((1,1,1), (1,1,2), (1,2,1), (1,2,2))),
+    ([ 0, 1, 0], ((1,2,1), (2,2,1), (1,2,2), (2,2,2))),
+    ([ 0, 0, 1], ((1,1,2), (1,2,2), (2,2,2), (2,1,2)))
 ]
 
 function marching_cubes(x, y, t, visited)
@@ -150,16 +150,17 @@ function marching_cubes(x, y, t, visited)
         return Set()
     end
 
-    Z1, Z2 = view(Lvv, corners...), view(GLt, corners...)
-    Z1_crossings, Z2_crossings = [], []
+    @views Z1, Z2 = Lvv[corners...], GLt[corners...]
+    Z1_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
+    Z2_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
 
     # Find all sign crossings w/ linear interpolation
     for (a, b) in cube_edges
-        if sign(Z1[a...]) != sign(Z1[b...])
+        if signbit(Z1[a...]) != signbit(Z1[b...])
             push!(Z1_crossings, (a, b, linear_interpolate(a, b, Z1[a...], Z1[b...])))
         end
 
-        if sign(Z2[a...]) != sign(Z2[b...])
+        if signbit(Z2[a...]) != signbit(Z2[b...])
             push!(Z2_crossings, (a, b, linear_interpolate(a, b, Z2[a...], Z2[b...])))
         end
     end
