@@ -77,6 +77,8 @@ const GLt = gamma.*scales3.^(gamma-1) .* (Lx.^2 + Ly.^2) + scales3.^gamma.*(Lx.*
 
 const GLtt = (gamma.*(gamma - 1).*scales3.^(gamma - 2).*(Lx.^2 + Ly.^2) + 2gamma.*scales3.^(gamma-1).*(Lx.*(Lxxx + Lxyy) + Ly.*(Lxxy + Lyyy)) + scales3.^gamma/2.*((Lxxx + Lxyy).^2 + (Lxxy + Lyyy).^2 + Lx.*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly.*(Lxxxxy + 2Lxxyyy + Lyyyyy))) .< 0
 
+const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
+
 Z12 = Lvvv .& GLtt
 
 function linear_interpolate(p1, p2, v1, v2)
@@ -174,8 +176,7 @@ function marching_cubes(x, y, t, visited)
     face_intersections = []
     result = Set()
     for (normal, face) in cube_faces
-        Z1_zeros = []
-        Z2_zeros = []
+        Z1_zeros, Z2_zeros = [], []
         for (a, b, mid) in Z1_crossings
             if a in face && b in face
                 push!(Z1_zeros, mid)
@@ -242,4 +243,47 @@ function flatten_edges(edges)
         edge_map[x,y,t] = true
     end
     return edge_map
+end
+
+function planar_zeros(Lp)
+    Lp_pos = signbit.(Lp)
+    Lp_zeros = falses(Lp)
+    for (i, scale) in enumerate(scales)
+        for x in 2:(size(Lp)[1]-1)
+            for y in 2:(size(Lp)[2]-1)
+                @views neighbors = Lp_pos[x-1:x+1, y-1:y+1, i]
+                if (Lp_pos[x,y,i] && !all(neighbors)) ||
+                    (!Lp_pos[x,y,i] && any(neighbors))
+                    Lp_zeros[x,y,i] = true
+                end
+            end
+        end
+    end
+    return Lp_zeros
+end
+
+function scale_zeros(Lp)
+    Lp_pos = signbit.(Lp)
+    Lp_zeros = falses(Lp)
+    for i in 2:length(scales)-1
+        Lp_zeros[:,:,i] = (Lp_pos[:,:,i-1] .!= Lp_pos[:,:,i]) .| (Lp_pos[:,:,i] .!= Lp_pos[:,:,i+1])
+    end
+    return Lp_zeros
+end
+
+function scale_maxima(Lp)
+    Lp_pos = signbit.(Lp)
+    Lp_zeros = falses(Lp)
+    for i in 2:length(scales)
+        Lp_zeros[:,:,i] = (Lp_pos[:,:,i-1] .& .!Lp_pos[:,:,i])
+    end
+    return Lp_zeros
+end
+
+function edge_importance(edge)
+    total = 0
+    for (x, y, t) in edge
+        total += sqrt(GL[x,y,t])
+    end
+    return total
 end
