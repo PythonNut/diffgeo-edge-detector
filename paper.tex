@@ -1,3 +1,4 @@
+%&pdflatex
 \documentclass{article}
 \usepackage[final]{nips_2017}
 \usepackage[utf8]{inputenc} % allow utf-8 input
@@ -21,10 +22,21 @@
 \maketitle
 
 \begin{abstract}
-  We did some things.
+    Scale space representation is the idea that a two dimensional image can be represented by a collection of smoothed images. This paper documents how using such a representation can be useful for detecting edges in an image. The scale space allows for a classification of how strong different edges are in the image from very fine to coarse ones. 
 \end{abstract}
 
-\section{}
+\section{Scale Space}
+To understand how exactly we detect images in the scale space, we must first define what the scale space is. If we have a continuous function of a variable such as $f(x)$, then we define the scale space representation of such a function as 
+
+\begin{equation}
+L(x;t) = g(x;t) * f(x)
+\end{equation}
+
+Here $t$ represents the scale parameter, and can be thought of how much smoothing is applied to the function. The function $g$ is the Gaussian kernel given by
+
+\begin{equation}
+g(x;t) = \frac{1}{2 \pi t}e^{-(x^2+y^2)/(2t)}
+\end{equation}
 
 \section*{References}
 
