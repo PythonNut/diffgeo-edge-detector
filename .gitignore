@@ -6,6 +6,7 @@
 *.fls
 *.fdb_latexmk
 *.ini
+*.out
 _region_.prv
 prv_*.fmt
 _region_.tex
