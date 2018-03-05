@@ -16,6 +16,7 @@
 \usepackage{float}
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{commath}
 
 % Define the coloring for keywords in Julia
 \lstdefinelanguage{Julia}%
@@ -206,10 +207,10 @@ In this case we can define it as
 Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by
 
 \begin{equation}
-  G(\Gamma) = \int_{(x;t) \in \Gamma} \sqrt{(G_{\gamma}L)(x;t)} \,\, ds
+  G(\Gamma) = \int_{(x;t) \in \Gamma} \sqrt{(G_{\gamma}L)(x;t)} \,\, \dif s
 \end{equation}
 
-where $ds^2=dx^2+dy^2$.
+where $\dif s^2=\dif x^2+\dif y^2$.
 
 \section{Implementation}
 For our implementation we will be using the following image to run our tests on
@@ -265,6 +266,10 @@ img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
 # Define derivative convolution matrices
 Dy = Array(parent(Kernel.ando5()[1]))
 Dx = Array(parent(Kernel.ando5()[2]))
+
+# Normalized the derivatives
+Dx /= sum(Dx .* (Dx .> 0))
+Dy /= sum(Dy .* (Dy .> 0))
 \end{lstlisting}
 
 The derivative matrices used for our project are the ando5 matrices which are defined as the following
@@ -279,9 +284,12 @@ The derivative matrices used for our project are the ando5 matrices which are de
       -0.026786 &-0.070844  &0.0  &0.070844  &0.026786 \\
       -0.003776 &-0.010199  &0.0  &0.010199  &0.003776
     \end{bmatrix} \\
-    [D_y] &= [D_x]^T
+    [D_x] &= [D_y]^T
   \end{aligned}
 \end{equation}
+
+
+
 \section*{References}
 
 \end{document}
