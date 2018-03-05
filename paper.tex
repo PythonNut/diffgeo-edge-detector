@@ -25,18 +25,86 @@
     Scale space representation is the idea that a two dimensional image can be represented by a collection of smoothed images. This paper documents how using such a representation can be useful for detecting edges in an image. The scale space allows for a classification of how strong different edges are in the image from very fine to coarse ones. 
 \end{abstract}
 
-\section{Scale Space}
-To understand how exactly we detect images in the scale space, we must first define what the scale space is. If we have a continuous function of a variable such as $f(x)$, then we define the scale space representation of such a function as 
+\section{Edge Detection}
+    Detecting edges in images has long been a problem with many uniques solutions to approach it. Generally speaking, the majority of algorithms are usually checking the image for some of the following features:
 
-\begin{equation}
-L(x;t) = g(x;t) * f(x)
-\end{equation}
+    \begin{itemize}
+        \item large discontinuities in luminance values
+        \item discontinuities in different object orientations
+        \item large discontinuities in the intensity gradient
+    \end{itemize}
 
-Here $t$ represents the scale parameter, and can be thought of how much smoothing is applied to the function. The function $g$ is the Gaussian kernel given by
+    \indent Some of the common methods for edge detection include the Sobel, Canny, Prewitt, Roberts, and Fuzzy Logic algorithms. However, these methods do not yield a lot of imformation with regards to the strength of the edges detected. The majority of these algorithms will usually convolve the image with a static matrix to caclulate edges and does adapt enough to the image. 
 
-\begin{equation}
-g(x;t) = \frac{1}{2 \pi t}e^{-(x^2+y^2)/(2t)}
-\end{equation}
+    This is why for our edge detection method, we will be using the scale space approach. The benefit of using a scale space appraoch for edge detection, is we have the ability to classify the strength of the edges in the image. This allows for a range of edges from very large immediate changes in intensity to very gradual. 
+
+\section{Scale Space and Its Derivatives}
+    To understand how exactly we detect images in the scale space, we must first define what the scale space is. If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as 
+
+    \begin{equation}
+        L(x;t) = g(x,y;t) * f(x,y)
+    \end{equation}
+
+    Here $t$ represents the scale parameter, and can be thought of how much smoothing is applied to the function. The function $g$ is the Gaussian kernel given by
+
+    \begin{equation}
+        g(x,y;t) = \frac{1}{2 \pi t}e^{-(x^2+y^2)/(2t)}
+    \end{equation}
+
+    With the scale space representation defined, we can now take derivatives of it as it is a continuous well-defined function. Spatial derivatives are relatively simple being defined as the following
+
+    \begin{equation}
+        L_{x^{\alpha}y^{\beta}}(\cdot;t) = \partial_{x^{\alpha}y^{\beta}}L(\cdot;t) = g_{x^{\alpha}y^{\beta}}(\cdot;t) * f(\cdot)
+    \end{equation}
+
+    However, when taking the partial derivative with respect to the scale $t$, it becomes more interesting. The scale space representation collection is a solution for the diffusion equation. Therefore is has the useful property of 
+
+    \begin{equation}
+        \partial_t L = \frac{1}{2} \nabla^2 L = \frac{1}{2} (\partial_{xx} + \partial_{yy})L
+    \end{equation}
+
+    with the inital condition of $L(x,y;0) = f(x,y)$. So now, scale derivatives can be represented as spatial derivatives. 
+
+    Now all these representations and operators are useful for continuous functions, but the images we deal with are discrete and contain quantized inetsnity values. So we must now understand how these operations and properties apply to the discrete domain.
+
+    The scale space representation is still defined in a similar fashion. The following is the discrete version of the scale space operationg on the function $f(x)$, which only has a single spatial variable.
+
+    \begin{equation}
+        L(x;t) = (T(\cdot;t) * f(\cdot))(x;t)
+    \end{equation}
+
+    In this expression, $T$ represents the discrete version of the Gaussian kernel and is further evaluated as
+
+    \begin{equation}
+        T(n;t) = e^{-t}I_n(t)
+    \end{equation} 
+
+    where $I_n$ is the modified Bessel functions of integer order given by 
+
+    \begin{equation}
+        I_n(x) = i^{-\alpha}J_{\alpha}(ix) = \sum_{m=0}^{\infty}\frac{1}{m!\Gamma(m+\alpha+1)}\left(\frac{x}{2}\right)^{2m+\alpha}
+    \end{equation}
+
+    Now that the one dimensional case is understood for the scale space, we can expand this to two dimensions. After all, images are compsed of two dimesnisons, so it makes sense that these operators can act on two dimensional functions. The two dimensional scale space representation for discrete variables is given by the follwoing
+
+    \begin{equation}
+        L(x,y;t) = \sum_{m=-\infty}^{\infty}\sum_{n=-\infty}^{\infty}T(m;t)T(n;t)f(x-m,y-n)
+    \end{equation}
+
+    Even with the discrete case, the scale space representation must still satisfy the semidiscretized version of the diffusion equation. Therfore by taking a scale derivative of the function we must have the following
+
+    \begin{equation}
+        \partial_t L = \frac{1}{2}((1-\gamma)\nabla^2_5L+\gamma\nabla^2_\times L)
+    \end{equation}
+
+    where
+
+    \begin{equation}
+        (\nabla^2_5f)_{0,0} = f_{-1,0} + f_{+1,0} + f_{0,-1} + f_{0,+1} + 4f_{0,0}
+    \end{equation}
+    \begin{equation}
+        (\nabla^2_5f)_{0,0} = f_{-1,0} + f_{+1,0} + f_{0,-1} + f_{0,+1} + 4f_{0,0}
+    \end{equation}
 
 \section*{References}
 
