@@ -9,6 +9,7 @@
 \usepackage{amsfonts}       % blackboard math symbols
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
+\usepackage{amsmath}
 
 \title{Scale Space Edge Detection}
 
@@ -25,7 +26,7 @@
     Scale space representation is the idea that a two dimensional image can be represented by a collection of smoothed images. This paper documents how using such a representation can be useful for detecting edges in an image. The scale space allows for a classification of how strong different edges are in the image from very fine to coarse ones. 
 \end{abstract}
 
-\section{Edge Detection}
+\section{Edge Detection Background}
     Detecting edges in images has long been a problem with many uniques solutions to approach it. Generally speaking, the majority of algorithms are usually checking the image for some of the following features:
 
     \begin{itemize}
@@ -97,13 +98,54 @@
         \partial_t L = \frac{1}{2}((1-\gamma)\nabla^2_5L+\gamma\nabla^2_\times L)
     \end{equation}
 
-    where
+    where $\gamma \in [0,1]$ is a hyperparameter and,
 
     \begin{equation}
-        (\nabla^2_5f)_{0,0} = f_{-1,0} + f_{+1,0} + f_{0,-1} + f_{0,+1} + 4f_{0,0}
+        (\nabla^2_5f)_{0,0} = f_{-1,0} + f_{+1,0} + f_{0,-1} + f_{0,+1} - 4f_{0,0}
     \end{equation}
     \begin{equation}
-        (\nabla^2_5f)_{0,0} = f_{-1,0} + f_{+1,0} + f_{0,-1} + f_{0,+1} + 4f_{0,0}
+        (\nabla^2_\times f)_{0,0} = \frac{1}{2}(f_{-1,-1} + f_{-1,+1} + f_{+1,-1} + f_{+1,+1} - 4f_{0,0})
+    \end{equation}
+
+    Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what discrete scale spaces and their derivatives look like, we can start to define what an edge is.
+
+\section{Defining an Edge in Scale Space}
+    We classify edge points as points which have gradient magnitueds that assume a maximum in the direction of the gradient. Let us denote the magnitude of the gradient of $L$ as $L_g$. Then we define an edge in the scale space with the following conditions
+
+    \begin{equation} \label{eq:c1}
+        \begin{aligned}
+            L_{gg} &= 0 \\ 
+            L_{ggg} &< 0
+        \end{aligned}
+    \end{equation}
+
+    The way we can then represent these conditions in terms of spatial derivatives is as follows
+
+    \begin{equation}
+        \begin{aligned}
+            L_{gg} &= L_x^2L_{xx}+2L_xL_yL_{xy}+L_y^2L_{yy} = 0 \\
+            L_{ggg} &= L_x^3L_{xxx} +3L_x^2L_yL_{xxy}+3L_xL_y^2L_{xyy}+L_y^3L_{yyy} < 0
+        \end{aligned}
+    \end{equation}
+
+    This is useful for determining edges at a single scale, but if we are to determine edges over multiple scales, we must also develop an edge strength metric, $\varepsilon_{norm}L$. Thus this adds two more conditions that must be satisified for an edge to be classified in the scale space. 
+
+    \begin{equation} \label{eq:c2}
+        \begin{aligned}
+            \partial_t(\varepsilon_{norm}L(x,y;t)) = 0\\
+            \partial_{tt}(\varepsilon_{norm}L(x,y;t)) < 0
+        \end{aligned}
+    \end{equation}
+
+    Then equation \ref{eq:c1} in conjunction with \ref{eq:c2} form the neccessary constraints for us to define an edge in the scale space. Now we must define what we mean by edge strength and give a clearer idea of $\varepsilon_{norm}$.
+
+    The approach we took was to let our edge strength meteric be defined by the gradient magnitude that has been normalized by our $\gamma$ factor. In this case we can define it as 
+
+    \begin{equation}
+        \begin{aligned}
+            G_{\gamma}L &= L_{g,\gamma}^2 \\
+            &= t^{\gamma}(L_x^2+L_y^2)
+        \end{aligned}
     \end{equation}
 
 \section*{References}
