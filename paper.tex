@@ -10,6 +10,7 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{amsmath}
+\usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{morefloats}
 \usepackage{float}
@@ -198,7 +199,7 @@
     \begin{figure}[H]
     \centering
         \includegraphics[scale=0.5]{Images/lena.jpg}
-        \caption{Lena Image}
+        \caption{Original Grayscale Lena Image}
         \label{lena_o}
     \end{figure}
 
@@ -246,6 +247,21 @@
         Dx = Array(parent(Kernel.ando5()[2]))
     \end{lstlisting}
 
+    The derivative matrices used for our project are the ando5 matrices which are defined as the following
+
+    \begin{equation}
+        \begin{aligned}
+        [D_y] &=
+        \begin{bmatrix}
+            -0.003776 &-0.010199  &0.0  &0.010199  &0.003776 \\
+            -0.026786 &-0.070844  &0.0  &0.070844  &0.026786 \\
+            -0.046548 &-0.122572  &0.0  &0.122572  &0.046548 \\
+            -0.026786 &-0.070844  &0.0  &0.070844  &0.026786 \\
+            -0.003776 &-0.010199  &0.0  &0.010199  &0.003776
+        \end{bmatrix} \\
+        [D_y] &= [D_x]^T
+        \end{aligned}
+    \end{equation}  
 \section*{References}
 
 \end{document}
