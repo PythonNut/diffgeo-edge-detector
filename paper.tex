@@ -32,16 +32,19 @@
 
     % Set the lstlistings to the Julia color scheme
     \lstset{
-        basicstyle=\ttfamily,
-        columns=fullflexible,
-        frame=single,
-        breaklines=true,
+        basicstyle       = \ttfamily,
+        columns          = fullflexible,
+        frame            = single,
+        breaklines       = true,
         language         = Julia,
         basicstyle       = \ttfamily,
         keywordstyle     = \bfseries\color{blue},
         stringstyle      = \color{magenta},
         commentstyle     = \color{ForestGreen},
         showstringspaces = false,
+        numbers          = left,
+        xleftmargin      = 2em,
+        framexleftmargin = 2em
     }
 
 \title{Scale Space Edge Detection}
@@ -226,6 +229,21 @@
             length = 8*ceil(Int, sigma) + 1
             return imfilter(img, reflect(Kernel.gaussian((sigma, sigma), (length, length))))
         end
+    \end{lstlisting}
+
+    These will be used for computing all the neccessary two dimensional matrix convolutions that we will use throughout the rest of the code. The next step is to then define our range of scales used and which derivative kernels we will be using to compute two dimensional discrete spatial derivatives. The following code shows the definitions for our variables that will be used for all further calculations. 
+
+    \begin{lstlisting}
+        # Parameters
+        gamma = 1
+        scales = exp.(linspace(0, log(50), 40))
+
+        # Load the image
+        img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
+
+        # Define derivative convolution matrices
+        Dy = Array(parent(Kernel.ando5()[1]))
+        Dx = Array(parent(Kernel.ando5()[2]))
     \end{lstlisting}
 
 \section*{References}
