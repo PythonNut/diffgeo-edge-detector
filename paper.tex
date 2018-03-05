@@ -10,6 +10,39 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{morefloats}
+\usepackage{float}
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{xcolor}
+
+    % Define the coloring for keywords in Julia
+    \lstdefinelanguage{Julia}%
+    {morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+        end,export,false,for,function,immutable,import,importall,if,in,%
+        macro,module,otherwise,quote,return,switch,true,try,type,typealias,%
+        using,while},%
+        sensitive=true,%
+        alsoother={$},%
+        morecomment=[l]\#,%
+        morecomment=[n]{\#=}{=\#},%
+        morestring=[s]{"}{"},%
+        morestring=[m]{'}{'},%
+    }[keywords,comments,strings]%
+
+    % Set the lstlistings to the Julia color scheme
+    \lstset{
+        basicstyle=\ttfamily,
+        columns=fullflexible,
+        frame=single,
+        breaklines=true,
+        language         = Julia,
+        basicstyle       = \ttfamily,
+        keywordstyle     = \bfseries\color{blue},
+        stringstyle      = \color{magenta},
+        commentstyle     = \color{ForestGreen},
+        showstringspaces = false,
+    }
 
 \title{Scale Space Edge Detection}
 
@@ -148,7 +181,53 @@
         \end{aligned}
     \end{equation}
 
-\section*{References}
+    Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by
 
+    \begin{equation}
+        G(\Gamma) = \int_{(x;t) \in \Gamma} \sqrt{(G_{\gamma}L)(x;t)} \,\, ds
+    \end{equation}
+
+    where $ds^2=dx^2+dy^2$.
+
+\section{Implementation}
+    For our implementation we will be using the following image to run our tests on
+
+    \begin{figure}[H]
+    \centering
+        \includegraphics[scale=0.5]{Images/lena.jpg}
+        \caption{Lena Image}
+        \label{lena_o}
+    \end{figure}
+
+    Figure \ref{lena_o} is a standard test image for image processing and is good for our purposes since it contains a variety of different edges with different strengths. 
+
+    So what we first do is define our convolution functions that we will be using in code.
+
+    \begin{lstlisting}
+        function combine_kernels(kers...)
+            return reduce(conv2, kers)
+        end
+
+        function convolve_image(I, kers...)
+            kernel = combine_kernels(kers...)
+            return imfilter(I, centered(kernel))
+        end
+
+        function convolve_scale_space(L, kers...)
+            return mapslices(
+                scale_slice -> convolve_image(scale_slice, kers...),
+                L,
+                (1,2)
+            )
+        end
+
+        function convolve_gaussian(img, sigma)
+            # The dimension of the convolution matrix
+            length = 8*ceil(Int, sigma) + 1
+            return imfilter(img, reflect(Kernel.gaussian((sigma, sigma), (length, length))))
+        end
+    \end{lstlisting}
+
+\section*{References}
 
 \end{document}

@@ -10,7 +10,7 @@ gamma = 1
 scales = exp.(linspace(0, log(50), 40))
 
 # Load the image
-img = float.(Colors.Gray.(testimage("mandrill")))
+img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
 
 # Define derivative convolution matrices
 Dy = Array(parent(Kernel.ando5()[1]))
