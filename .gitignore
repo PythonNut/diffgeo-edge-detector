@@ -7,6 +7,7 @@
 *.fdb_latexmk
 *.ini
 *.out
+*.fmt
 _region_.prv
 prv_*.fmt
 _region_.tex

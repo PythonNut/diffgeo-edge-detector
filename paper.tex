@@ -17,36 +17,35 @@
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{xcolor}
 
-    % Define the coloring for keywords in Julia
-    \lstdefinelanguage{Julia}%
-    {morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
-        end,export,false,for,function,immutable,import,importall,if,in,%
-        macro,module,otherwise,quote,return,switch,true,try,type,typealias,%
-        using,while},%
-        sensitive=true,%
-        alsoother={$},%
-        morecomment=[l]\#,%
-        morecomment=[n]{\#=}{=\#},%
-        morestring=[s]{"}{"},%
-        morestring=[m]{'}{'},%
-    }[keywords,comments,strings]%
+% Define the coloring for keywords in Julia
+\lstdefinelanguage{Julia}%
+{morekeywords={abstract,break,case,catch,const,continue,do,else,elseif,%
+    end,export,false,for,function,immutable,import,importall,if,in,%
+    macro,module,otherwise,quote,return,switch,true,try,type,typealias,%
+    using,while},%
+  sensitive=true,%
+  morecomment=[l]\#,%
+  morecomment=[n]{\#=}{=\#},%
+  morestring=[s]{"}{"},%
+  morestring=[m]{'}{'},%
+}[keywords,comments,strings]%
 
-    % Set the lstlistings to the Julia color scheme
-    \lstset{
-        basicstyle       = \ttfamily,
-        columns          = fullflexible,
-        frame            = single,
-        breaklines       = true,
-        language         = Julia,
-        basicstyle       = \ttfamily,
-        keywordstyle     = \bfseries\color{blue},
-        stringstyle      = \color{magenta},
-        commentstyle     = \color{ForestGreen},
-        showstringspaces = false,
-        numbers          = left,
-        xleftmargin      = 2em,
-        framexleftmargin = 2em
-    }
+% Set the lstlistings to the Julia color scheme
+\lstset{
+  basicstyle       = \ttfamily,
+  columns          = fullflexible,
+  frame            = single,
+  breaklines       = true,
+  language         = Julia,
+  basicstyle       = \ttfamily,
+  keywordstyle     = \bfseries\color{blue},
+  stringstyle      = \color{magenta},
+  commentstyle     = \color{ForestGreen},
+  showstringspaces = false,
+  numbers          = left,
+  xleftmargin      = 2em,
+  framexleftmargin = 2em
+}
 
 \title{Scale Space Edge Detection}
 
