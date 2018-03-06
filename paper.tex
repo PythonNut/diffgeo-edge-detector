@@ -205,6 +205,12 @@ In this case we can define it as
   \end{aligned}
 \end{equation}
 
+The first scale derivative of the gradient magnitude is calculated as follows
+
+\begin{equation}
+  \partial_t (G_{\gamma}L) = \gamma t^{\gamma-1}(L_x^2+L_y^2) + t^{\gamma}(L_x(L_{xxx}+L_{yyy})+L_y(L_{xxy} + L_{yyy}))
+\end{equation}
+
 Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by
 
 \begin{equation}
@@ -348,7 +354,7 @@ const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx +
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 \end{lstlisting}
 
-
+With these calculations we now can check all the conditions neccessary to define an edge in scale space.
 
 \section*{Appendix}
 
