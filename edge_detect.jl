@@ -84,8 +84,6 @@ const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx +
 # Second derivative of edge strength gradinet with respect to scale
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 
-Z12 = Lvvv .& GLtt
-
 function linear_interpolate(p1, p2, v1, v2)
     return (abs(v1)*collect(p1) + abs(v2)*collect(p2))/(abs(v1) + abs(v2))
 end
