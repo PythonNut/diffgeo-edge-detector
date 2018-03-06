@@ -313,3 +313,9 @@ function clamp_signed(slice, L)
     min_val, max_val = minimum(L), maximum(L)
     return @. (slice - min_val)/(max_val - min_val)
 end
+
+function export_at_scales(L, scale_list, fname)
+    for s in scale_list
+        save((@eval @sprintf($fname, $(scales[s]))), L[:,:,s])
+    end
+end
