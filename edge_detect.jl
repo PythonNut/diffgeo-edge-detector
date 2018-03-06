@@ -72,13 +72,17 @@ Lyyyyy = convolve_scale_space(Lyyy, Dy, Dy)
 const Lvv = @. Lx^2*Lxx + 2Lx*Ly*Lxy + Ly^2*Lyy
 const Lvvv = @. (Lx^3*Lxxx + 3Lx^2*Ly*Lxxy + 3Lx*Ly^2*Lxyy + Ly^3*Lyyy) < 0
 
+# Shape the scales vector to be a vector with depth
 scales3 = reshape(scales, 1, 1, length(scales))
 
+# Definition of the gradient edge strength (magnitude)
+const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
+
+# Derivative of edge strength gradinet with respect to scale
 const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy))
 
+# Second derivative of edge strength gradinet with respect to scale
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
-
-const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
 
 Z12 = Lvvv .& GLtt
 

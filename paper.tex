@@ -17,6 +17,7 @@
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{xcolor}
 \usepackage{commath}
+\usepackage{graphicx}
 
 % Define the coloring for keywords in Julia
 \lstdefinelanguage{Julia}%
@@ -288,7 +289,68 @@ The derivative matrices used for our project are the ando5 matrices which are de
   \end{aligned}
 \end{equation}
 
+From this point, we then can compute the scale space representation of our image and compute its spatial derivatives
+The following section of code defines just how to do that.
 
+\begin{lstlisting}
+# Scale space representation
+L = cat(3, (convolve_gaussian(img, sigma) for sigma in scales)...)
+
+# First order derivatives
+Lx = convolve_scale_space(L, Dx)
+Ly = convolve_scale_space(L, Dy)
+
+# Second order derivatives
+Lxx = convolve_scale_space(Lx, Dx)
+Lxy = convolve_scale_space(Lx, Dy)
+Lyy = convolve_scale_space(Ly, Dy)
+
+# Third order derivatives
+Lxxx = convolve_scale_space(Lxx, Dx)
+Lxxy = convolve_scale_space(Lxx, Dy)
+Lxyy = convolve_scale_space(Lxy, Dy)
+Lyyy = convolve_scale_space(Lyy, Dy)
+\end{lstlisting}
+
+By convolving our ando5 derivative matrix with the scale space representation, we can take spatial derivatives in both the $x$ and $y$ dimension. To give an idea of what the images look like, we have the following spatial derivatives of the image below.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{Images/lx.png}
+  \caption{Derivative of image in $x$ direction}
+  \label{lx}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.5]{Images/ly.png}
+  \caption{Derivative of image in $y$ direction}
+  \label{ly}
+\end{figure}
+
+Now that we have computed the spatial derivatives of the scale space representation of the image, we can check if we fulfill the conditions in (\ref{eq:c1}). 
+The next step is to then calculate the edge strength derivatives neccessary to fulfill the conditions of (\ref{eq:c2}).
+The code block below shows the computations for the edge strength based on the gradient magnitued and its derivatives.
+
+\newpage
+
+\begin{lstlisting}
+# Shape the scales vector to be a vector with depth
+scales3 = reshape(scales, 1, 1, length(scales))
+
+# Definition of the gradient edge strength (magnitude)
+const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
+
+# Derivative of edge strength gradinet with respect to scale
+const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy))
+
+# Second derivative of edge strength gradinet with respect to scale
+const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
+\end{lstlisting}
+
+\section*{Appendix}
+
+\lstinputlisting[caption={edge\_detect.jl},label=edge_detect]{edge_detect.jl}
 
 \section*{References}
 
