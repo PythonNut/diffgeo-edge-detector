@@ -134,7 +134,7 @@ In this expression, $T$ represents the discrete version of the Gaussian kernel a
 where $I_n$ is the modified Bessel functions of integer order given by
 
 \begin{equation}
-  I_n(x) = i^{-\alpha}J_{\alpha}(ix) = \sum_{m=0}^{\infty}\frac{1}{m!\Gamma(m+\alpha+1)}\left(\frac{x}{2}\right)^{2m+\alpha}
+  I_n(x) = i^{-n}J_{n}(ix) = \sum_{m=0}^{\infty}\frac{1}{m!\Gamma(m+n+1)}\left(\frac{x}{2}\right)^{2m+n}
 \end{equation}
 
 Now that the one dimensional case is understood for the scale space, we can expand this to two dimensions.
@@ -164,12 +164,12 @@ where $\gamma \in [0,1]$ is a hyperparameter and,
 Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what discrete scale spaces and their derivatives look like, we can start to define what an edge is.
 
 \section{Defining an Edge in Scale Space}
-We classify edge points as points which have gradient magnitueds that assume a maximum in the direction of the gradient. Let us denote the magnitude of the gradient of $L$ as $L_g$. Then we define an edge in the scale space with the following conditions
+We classify edge points as points which have gradient magnitude that assume a maximum in the direction of the gradient. Let us denote the magnitude of the gradient of $L$ as $L_v$. Then we define an edge in the scale space with the following conditions
 
 \begin{equation} \label{eq:c1}
   \begin{aligned}
-    L_{gg} &= 0 \\
-    L_{ggg} &< 0
+    L_{vv} &= 0 \\
+    L_{vvv} &< 0
   \end{aligned}
 \end{equation}
 
@@ -177,8 +177,8 @@ The way we can then represent these conditions in terms of spatial derivatives i
 
 \begin{equation}
   \begin{aligned}
-    L_{gg} &= L_x^2L_{xx}+2L_xL_yL_{xy}+L_y^2L_{yy} = 0 \\
-    L_{ggg} &= L_x^3L_{xxx} +3L_x^2L_yL_{xxy}+3L_xL_y^2L_{xyy}+L_y^3L_{yyy} < 0
+    L_{vv} &= L_x^2L_{xx}+2L_xL_yL_{xy}+L_y^2L_{yy} = 0 \\
+    L_{vvv} &= L_x^3L_{xxx} +3L_x^2L_yL_{xxy}+3L_xL_y^2L_{xyy}+L_y^3L_{yyy} < 0
   \end{aligned}
 \end{equation}
 
@@ -211,6 +211,19 @@ The first scale derivative of the gradient magnitude is calculated as follows
   \partial_t (G_{\gamma}L) = \gamma t^{\gamma-1}(L_x^2+L_y^2) + t^{\gamma}(L_x(L_{xxx}+L_{yyy})+L_y(L_{xxy} + L_{yyy}))
 \end{equation}
 
+Then the second scale derivative of the gradient magnitude is
+
+\begin{equation}
+  \begin{align}
+  \partial_{tt} &= \gamma(\gamma-1)t^{\gamma-2}(L_x^2+L_y^2) \\
+   &+ 2\gamma t^{\gamma-1}(L_x(L_{xyy}+L_{xxx})+L_y(L_{xxy}+L_{yyy})) \\
+   &+\frac{t^{\gamma}}{2}\big((L_{xxx}+L_{xyy})^2+(L_{xxy}+L_{yyy})^2 \\
+   &+ L_x(L_{xxxxx}+2L_{xxxyy}+L_{xyyyy}) \\
+   &+L_y(L_{xxxxy}+2L_{xxyyy}+L_{yyyyy})\big)
+  \end{align}
+\end{equation}
+
+
 Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by
 
 \begin{equation}
@@ -224,8 +237,8 @@ For our implementation we will be using the following image to run our tests on
 
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.5]{Images/lena.jpg}
-  \caption{Original Grayscale Lena Image}
+  \includegraphics[scale=0.5]{Images/lena/lena_orig.png}
+  \caption{Original Lena Image}
   \label{lena_o}
 \end{figure}
 
@@ -283,7 +296,7 @@ The derivative matrices used for our project are the ando5 matrices which are de
 
 \begin{equation}
   \begin{aligned}
-    [D_y] &=
+    [D_x] &=
     \begin{bmatrix}
       -0.003776 &-0.010199  &0.0  &0.010199  &0.003776 \\
       -0.026786 &-0.070844  &0.0  &0.070844  &0.026786 \\
@@ -291,7 +304,7 @@ The derivative matrices used for our project are the ando5 matrices which are de
       -0.026786 &-0.070844  &0.0  &0.070844  &0.026786 \\
       -0.003776 &-0.010199  &0.0  &0.010199  &0.003776
     \end{bmatrix} \\
-    [D_x] &= [D_y]^T
+    [D_y] &= [D_x]^T
   \end{aligned}
 \end{equation}
 
@@ -338,8 +351,6 @@ Now that we have computed the spatial derivatives of the scale space representat
 The next step is to then calculate the edge strength derivatives neccessary to fulfill the conditions of (\ref{eq:c2}).
 The code block below shows the computations for the edge strength based on the gradient magnitude and its derivatives.
 
-\newpage
-
 \begin{lstlisting}
 # Shape the scales vector to be a vector with depth
 scales3 = reshape(scales, 1, 1, length(scales))
@@ -354,7 +365,7 @@ const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx +
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 \end{lstlisting}
 
-With these calculations we now can check all the conditions neccessary to define an edge in scale space.
+With these calculations we now can check all the conditions necessary to define an edge in scale space. 
 
 \section*{Appendix}
 
