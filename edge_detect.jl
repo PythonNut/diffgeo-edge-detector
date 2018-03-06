@@ -307,3 +307,9 @@ function main()
     edge_flat = flatten_edges(n_strongest)
     save("output.png", flatten_scale(edge_flat))
 end
+
+clamp_signed(L) = clamp_signed(L, L)
+function clamp_signed(slice, L)
+    min_val, max_val = minimum(L), maximum(L)
+    return @. (slice - min_val)/(max_val - min_val)
+end
