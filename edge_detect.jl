@@ -250,7 +250,7 @@ function flatten_edges(edges)
     return edge_map
 end
 
-function planar_zeros(Lp)
+function spatial_zeros(Lp)
     Lp_pos = signbit.(Lp)
     Lp_zeros = falses(Lp)
     for (i, scale) in enumerate(scales)
