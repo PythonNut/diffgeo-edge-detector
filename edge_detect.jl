@@ -295,8 +295,8 @@ function n_strongest_edges(edges, n)
     return sort(edges, by=edge_importance, rev=true)[1:n]
 end
 
-function flatten_scale(Lp)
-    return mapslices(any, Lp, 3)
+function flatten_scale(Lp, func=any)
+    return mapslices(func, Lp, 3)
 end
 
 function main()
