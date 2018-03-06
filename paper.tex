@@ -330,7 +330,7 @@ By convolving our ando5 derivative matrix with the scale space representation, w
 
 Now that we have computed the spatial derivatives of the scale space representation of the image, we can check if we fulfill the conditions in (\ref{eq:c1}). 
 The next step is to then calculate the edge strength derivatives neccessary to fulfill the conditions of (\ref{eq:c2}).
-The code block below shows the computations for the edge strength based on the gradient magnitued and its derivatives.
+The code block below shows the computations for the edge strength based on the gradient magnitude and its derivatives.
 
 \newpage
 
@@ -348,9 +348,11 @@ const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx +
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 \end{lstlisting}
 
+
+
 \section*{Appendix}
 
-\lstinputlisting[caption={edge\_detect.jl},label=edge_detect]{edge_detect.jl}
+\lstinputlisting[caption={edge\_detect.jl},label=edge_detect,frame=none]{edge_detect.jl}
 
 \section*{References}
 
