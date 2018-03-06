@@ -312,6 +312,8 @@ function clamp_signed(slice, L)
     return @. (slice - min_val)/(max_val - min_val)
 end
 
+clamp_slices(L) = mapslices(clamp_signed, L, (1,2))
+
 function export_at_scales(L, scale_list, fname)
     for s in scale_list
         save((@eval @sprintf($fname, $(scales[s]))), L[:,:,s])
