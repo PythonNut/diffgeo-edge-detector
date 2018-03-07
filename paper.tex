@@ -77,11 +77,11 @@ Generally speaking, the majority of algorithms are usually checking the image fo
 \item large discontinuities in the intensity gradient
 \end{itemize}
 \indent Some of the common methods for edge detection include the Sobel, Canny, Prewitt, Roberts, and Fuzzy Logic algorithms.
-However, these methods do not yield a lot of imformation with regards to the strength of the edges detected.
-The majority of these algorithms will usually convolve the image with a static matrix to caclulate edges and does adapt enough to the image. 
+However, these methods do not yield a lot of information with regards to the strength of the edges detected.
+The majority of these algorithms will usually convolve the image with a static matrix to calculate edges and does adapt enough to the image. 
 
 This is why for our edge detection method, we will be using the scale space approach.
-The benefit of using a scale space appraoch for edge detection, is we have the ability to classify the strength of the edges in the image.
+The benefit of using a scale space approach for edge detection, is we have the ability to classify the strength of the edges in the image.
 This allows for a range of edges from very large immediate changes in intensity to very gradual.
 
 \section{Scale Space and Its Derivatives}
@@ -104,7 +104,7 @@ The scale space representation collection is a solution for the diffusion equati
 \begin{equation}
   \partial_t L = \frac{1}{2} \nabla^2 L = \frac{1}{2} (\partial_{xx} + \partial_{yy})L
 \end{equation}
-with the inital condition of $L(x,y;0) = f(x,y)$.
+with the initial condition of $L(x,y;0) = f(x,y)$.
 So now, scale derivatives can be represented as spatial derivatives. 
 
 Now all these representations and operators are useful for continuous functions, but the images we deal with are discrete and contain quantized inetsnity values.
@@ -305,18 +305,18 @@ Lxyy = convolve_scale_space(Lxy, Dy)
 Lyyy = convolve_scale_space(Lyy, Dy)
 \end{lstlisting}
 By convolving our ando5 derivative matrix with the scale space representation, we can take spatial derivatives in both the $x$ and $y$ dimension. To give an idea of what the images look like, we have the following spatial derivatives of the image below.
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.5]{{{Images/lena/lena_Lv_maxima_14.439}}}
-  \caption{Derivative of image in $x$ direction}
-  \label{lx}
-\end{figure}
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.5]{Images/lena/lena_final.png}
-  \caption{Derivative of image in $y$ direction}
-  \label{ly}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.5]{{{Images/lena/lena_Lv_maxima_14.439}}}
+%   \caption{Derivative of image in $x$ direction}
+%   \label{lx}
+% \end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[scale=0.5]{Images/lena/lena_final.png}
+%   \caption{Derivative of image in $y$ direction}
+%   \label{ly}
+% \end{figure}
 Now that we have computed the spatial derivatives of the scale space representation of the image, we can check if we fulfill the conditions in (\ref{eq:c1}). 
 The next step is to then calculate the edge strength derivatives neccessary to fulfill the conditions of (\ref{eq:c2}).
 The code block below shows the computations for the edge strength based on the gradient magnitude and its derivatives.
@@ -335,7 +335,8 @@ const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*sc
 \end{lstlisting}
 With these calculations we now can check all the conditions necessary to define an edge in scale space. 
 
-\begin{table}[t]
+
+\begin{table}[H]
   \caption{Gradient magnitude}
   \centering
   \tabulinesep=0.1em
@@ -348,6 +349,22 @@ With these calculations we now can check all the conditions necessary to define 
     $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_18.7}}}\\
     $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_93.6}}}\\
     $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{First scale derivative of gradient magnitude}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_256.0}}}\\
     \bottomrule
 \end{tabu}
 \end{table}
