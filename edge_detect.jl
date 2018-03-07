@@ -4,6 +4,7 @@ using ImageView
 using Base.Cartesian
 using ProgressMeter
 using FileIO
+using SpecialFunctions
 
 # Parameters
 gamma = 1
@@ -36,13 +37,19 @@ function convolve_scale_space(L, kers...)
     )
 end
 
-function convolve_gaussian(img, sigma)
-    # The dimension of the convolution matrix
-    length = 8*ceil(Int, sigma) + 1
-    return imfilter(img, reflect(Kernel.gaussian((sigma, sigma), (length, length))))
+function gaussian_kernel(t, length)
+    G = hcat(besselix.(-length:length, t))
+    return reflect(centered(conv2(G, G')))
 end
 
-L = cat(3, (convolve_gaussian(img, sigma) for sigma in scales)...)
+function convolve_gaussian(img, t)
+    # The dimension of the convolution matrix
+    length = 4*ceil(Int, sqrt(t))
+    kernel = gaussian_kernel(t, length)
+    return imfilter(img, kernel)
+end
+
+L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
 
 Lx = convolve_scale_space(L, Dx)
 Ly = convolve_scale_space(L, Dy)
