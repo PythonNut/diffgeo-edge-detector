@@ -12,6 +12,7 @@
 \usepackage{amsmath}
 \usepackage{mathtools}
 \usepackage{graphicx}
+\usepackage{tabu}
 \usepackage{morefloats}
 \usepackage{float}
 \usepackage{listings}
@@ -333,6 +334,23 @@ const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx +
 const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 \end{lstlisting}
 With these calculations we now can check all the conditions necessary to define an edge in scale space. 
+
+\begin{table}[t]
+  \caption{Gradient magnitude}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GL_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
 
 \section*{Appendix}
 
