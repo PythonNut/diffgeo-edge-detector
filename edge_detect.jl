@@ -9,7 +9,7 @@ using FastConv # Pkg.clone("https://github.com/aamini/FastConv.jl")
 
 # Parameters
 gamma = 1
-scales = exp.(linspace(log(0.1), log(50*50), 40))
+scales = exp.(linspace(log(0.1), log(256), 40))
 
 # Load the image
 img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
