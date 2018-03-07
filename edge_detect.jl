@@ -8,7 +8,7 @@ using SpecialFunctions
 
 # Parameters
 gamma = 1
-scales = exp.(linspace(log(0.1), log(30), 40))
+scales = exp.(linspace(log(0.1), log(50*50), 40))
 
 # Load the image
 img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
