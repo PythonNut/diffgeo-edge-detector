@@ -50,32 +50,30 @@ function convolve_gaussian(img, t)
     return imfilter(img, kernel)
 end
 
+function spatial_derivative(L, x, y)
+    return convolve_scale_space(L, fill(Dx, x)..., fill(Dy, y)...)
+end
+
 L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
 
-Lx = convolve_scale_space(L, Dx)
-Ly = convolve_scale_space(L, Dy)
+Lx = spatial_derivative(L, 1, 0)
+Ly = spatial_derivative(L, 0, 1)
 
-Lxx = convolve_scale_space(Lx, Dx)
-Lxy = convolve_scale_space(Lx, Dy)
-Lyy = convolve_scale_space(Ly, Dy)
+Lxx = spatial_derivative(L, 2, 0)
+Lxy = spatial_derivative(L, 1, 1)
+Lyy = spatial_derivative(L, 0, 2)
 
-Lxxx = convolve_scale_space(Lxx, Dx)
-Lxxy = convolve_scale_space(Lxx, Dy)
-Lxyy = convolve_scale_space(Lxy, Dy)
-Lyyy = convolve_scale_space(Lyy, Dy)
+Lxxx = spatial_derivative(L, 3, 0)
+Lxxy = spatial_derivative(L, 2, 1)
+Lxyy = spatial_derivative(L, 1, 2)
+Lyyy = spatial_derivative(L, 0, 3)
 
-# Lxxxx = convolve_scale_space(Lxxx, Dx)
-# Lxxxy = convolve_scale_space(Lxxx, Dy)
-# Lxxyy = convolve_scale_space(Lxxy, Dy)
-# Lxyyy = convolve_scale_space(Lxyy, Dy)
-# Lyyyy = convolve_scale_space(Lyyy, Dy)
-
-Lxxxxx = convolve_scale_space(Lxxx, Dx, Dx)
-Lxxxxy = convolve_scale_space(Lxxx, Dx, Dy)
-Lxxxyy = convolve_scale_space(Lxxx, Dy, Dy)
-Lxxyyy = convolve_scale_space(Lxxy, Dy, Dy)
-Lxyyyy = convolve_scale_space(Lxyy, Dy, Dy)
-Lyyyyy = convolve_scale_space(Lyyy, Dy, Dy)
+Lxxxxx = spatial_derivative(L, 5, 0)
+Lxxxxy = spatial_derivative(L, 4, 1)
+Lxxxyy = spatial_derivative(L, 3, 2)
+Lxxyyy = spatial_derivative(L, 2, 3)
+Lxyyyy = spatial_derivative(L, 1, 4)
+Lyyyyy = spatial_derivative(L, 0, 5)
 
 const Lvv = @. Lx^2*Lxx + 2Lx*Ly*Lxy + Ly^2*Lyy
 const Lvvv = @. (Lx^3*Lxxx + 3Lx^2*Ly*Lxxy + 3Lx*Ly^2*Lxyy + Ly^3*Lyyy) < 0
