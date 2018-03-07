@@ -5,13 +5,14 @@ using Base.Cartesian
 using ProgressMeter
 using FileIO
 using SpecialFunctions
+using FastConv # Pkg.clone("https://github.com/aamini/FastConv.jl")
 
 # Parameters
 gamma = 1
 scales = exp.(linspace(log(0.1), log(50*50), 40))
 
 # Load the image
-img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
+img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
 
 # Define derivative convolution matrices
 Dy = Array(parent(Kernel.ando5()[1]))
@@ -21,7 +22,7 @@ Dx /= sum(Dx .* (Dx .> 0))
 Dy /= sum(Dy .* (Dy .> 0))
 
 function combine_kernels(kers...)
-    return reduce(conv2, kers)
+    return reduce(fastconv, kers)
 end
 
 function convolve_image(I, kers...)
@@ -39,7 +40,7 @@ end
 
 function gaussian_kernel(t, length)
     G = hcat(besselix.(-length:length, t))
-    return reflect(centered(conv2(G, G')))
+    return reflect(centered(fastconv(G, G')))
 end
 
 function convolve_gaussian(img, t)
