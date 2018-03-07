@@ -306,11 +306,11 @@ function flatten_scale(Lp, func=any)
     return mapslices(func, Lp, 3)
 end
 
-function main()
+function main(fname="output.png")
     edges = find_edges()
     n_strongest = n_strongest_edges(edges, 500)
     edge_flat = flatten_edges(n_strongest)
-    save("output.png", flatten_scale(edge_flat))
+    save(fname, flatten_scale(edge_flat))
 end
 
 clamp_signed(L) = clamp_signed(L, L)
