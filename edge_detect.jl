@@ -246,11 +246,12 @@ function find_edges()
     return edges
 end
 
-function flatten_edges(edges)
-    edge_flat = reduce(union, edges)
+function flatten_edges(edges, L)
     edge_map = falses((x->x-1).(size(L)))
-    for (x, y, t) in union(edge_flat)
-        edge_map[x,y,t] = true
+    for edge in edges
+        for (x, y, t) in edge
+            edge_map[x,y,t] = true
+        end
     end
     return edge_map
 end
@@ -309,7 +310,7 @@ end
 function main(fname="output.png")
     edges = find_edges()
     n_strongest = n_strongest_edges(edges, 500)
-    edge_flat = flatten_edges(n_strongest)
+    edge_flat = flatten_edges(n_strongest, L)
     save(fname, flatten_scale(edge_flat))
 end
 
