@@ -13,12 +13,16 @@
 \usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{tabu}
+\usepackage{mathrsfs}
 \usepackage{morefloats}
 \usepackage{float}
 \usepackage{listings}
 \usepackage[usenames,dvipsnames]{xcolor}
 \usepackage{commath}
 \usepackage{graphicx}
+\usepackage{tikz,tikz-3dplot}
+\usetikzlibrary{calc}
+\usetikzlibrary{intersections}
 
 % Define the coloring for keywords in Julia
 \lstdefinelanguage{Julia}%
@@ -433,7 +437,289 @@ With these calculations we now can check all the conditions necessary to define 
 \end{tabu}
 \end{table}
 
+\subsection{Marching Cubes}
 
+We note that the equations $\partial_t (\mathcal G_{\text{$\gamma$-norm}} L) =0 $ and $L_{vv} = 0$ define isosurfaces $\mathcal Z_1$ and $\mathcal Z_2$, embedded in $L$.
+Computing the intersection of these two surfaces and requiring the local maxima conditions $\partial_{tt} (\mathcal G_{\text{$\gamma$-norm}} L) < 0$ and $L_{vvv} < 0$ yields a family of isocurves, also embedded in $L$, which directly correspond to the edges in the image.
+
+However, since we only have access to $\partial_t (\mathcal G_{\text{$\gamma$-norm}} L)$ and $L_{vv}$ at the lattice points of $L$, we cannot solve for their intersection analytically.
+Instead, we rely on an approximation method to find the edges.
+We have chosen to implement the algorithm sketched by Lindeberg, a variation of the marching cubes algorithm.
+
+In our implementation, $L$ is broken down into voxels with a value at every corner.
+\begin{lstlisting}
+function marching_cubes(x, y, t, visited)
+    if visited[x, y, t]
+        return Set()
+    end
+
+    visited[x, y, t] = true
+\end{lstlisting}
+Since edges are connected sets of points, we know that if a given voxel has already been visited it cannot be part of this edge, so we skip it.
+
+\begin{lstlisting}
+    const corners = (x:x+1, y:y+1, t:t+1)
+
+    # Note: Maybe they don't need to be in the same corner
+    if !(any(view(GLtt, corners...)) && any(view(Lvvv, corners...)))
+      return Set()
+    end
+\end{lstlisting}
+We then check that our sign conditions $\mathcal S_1 < 0$ and $\mathcal S_2 < 0$ are each negative in at least one vertex of the voxel, otherwise there can be no maxima of $\mathcal Z_1$ and $\mathcal Z_2$ inside this voxel.
+\begin{lstlisting}
+    @views Z1, Z2 = Lvv[corners...], GLt[corners...]
+    Z1_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
+    Z2_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
+
+    # Find all sign crossings w/ linear interpolation
+    for (a, b) in cube_edges
+        if signbit(Z1[a...]) != signbit(Z1[b...])
+            push!(Z1_crossings, (a, b, linear_interpolate(a, b, Z1[a...], Z1[b...])))
+        end
+
+        if signbit(Z2[a...]) != signbit(Z2[b...])
+            push!(Z2_crossings, (a, b, linear_interpolate(a, b, Z2[a...], Z2[b...])))
+        end
+    end
+\end{lstlisting}
+
+We then construct a list of edges where the signs of $\mathcal Z_1$ or $\mathcal Z_2$ differ at the endpoints of the edge.
+We then estimate the position of the zero crossing of the surface of that point using linear interpolation.
+\begin{lstlisting}
+    for (normal, face) in cube_faces
+        Z1_zeros, Z2_zeros = [], []
+        for (a, b, mid) in Z1_crossings
+            if a in face && b in face
+                push!(Z1_zeros, mid)
+            end
+        end
+
+        for (a, b, mid) in Z2_crossings
+            if a in face && b in face
+                push!(Z2_zeros, mid)
+            end
+        end
+\end{lstlisting}
+Then, for every face of the voxel, we collect all of the edges with a zero crossing that lie on that face.
+\begin{lstlisting}
+        # Reject if there are more than two crossings for either invariant
+        if !(length(Z1_zeros) == length(Z2_zeros) == 2)
+            continue
+        end
+\end{lstlisting}
+If there is only one edge with a zero crossing on that face, the face cannot have a zero crossing inside it, so we skip further processing on this face.
+If there are four zero crossings of either invariant on this face, then it is ambiguous how the isosurface intersects with the face, so we will skip it\footnote{In the future, we could try to resolve this situation, since there are only two possible cases.} Here is a visualization of one case satisfying these requirements:
+
+\tdplotsetmaincoords{70}{120}
+\begin{center}
+  \begin{tabu}{cc}
+    \toprule
+    $\mathcal Z_1 $(i.e. $L_{vv}$)& $\mathcal Z_2$ (i.e. $\mathcal{G}L_t$)\\
+    \midrule
+    \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+      % The vertex at V
+      \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+      \tdplotsetcoord{O}{0}{0}{0}
+
+      \draw[]
+      (0,0,0) -- (Px)
+      (0,0,0) -- (Py)
+      (0,0,0) -- (Pz);
+
+      \draw[] (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+      \draw[] (Pyz) -- (Py) -- (Pxy);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (P)!0.63!(Pyz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxy)!0.45!(Py) $) {};
+      \draw [thick] ($ (P)!0.63!(Pyz) $)--($ (Pxy)!0.45!(Py) $);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxz)!0.4!(Pz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Px)!0.75!(O) $) {};
+      \draw [thick] ($ (Pxz)!0.4!(Pz) $)--($ (Px)!0.75!(O) $);
+
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (P) {};
+      \node[label=below left:$+$,fill,circle,inner sep=1.3pt] at (Px) {};
+      \node[label=below right:$-$,fill,circle,inner sep=1.3pt] at (Py) {};
+      \node[label=above:$-$,fill,circle,inner sep=1.3pt] at (Pz) {};
+      \node[label=below:$+$,fill,circle,inner sep=1.3pt] at (Pxy) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (Pyz) {};
+      \node[label=above left:$+$,fill,circle,inner sep=1.3pt] at (Pxz) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (O) {};
+    \end{tikzpicture} &
+    \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+      % The vertex at V
+      \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+      \tdplotsetcoord{O}{0}{0}{0}
+
+      \draw[]
+      (0,0,0) -- (Px)
+      (0,0,0) -- (Py)
+      (0,0,0) -- (Pz);
+
+      \draw[]
+      (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+      \draw[]
+      (Pyz) -- (Py) -- (Pxy);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (Px)!0.63!(Pxz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (O)!0.3!(Pz) $) {};
+      \draw [thick] ($ (Px)!0.63!(Pxz) $)--($ (O)!0.3!(Pz) $);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxy)!0.7!(P) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Py)!0.3!(Pyz) $) {};
+
+      \draw [thick] ($ (Pxy)!0.7!(P) $)--($ (Py)!0.3!(Pyz) $);
+
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (P) {};
+      \node[label=below left:$-$,fill,circle,inner sep=1.3pt] at (Px) {};
+      \node[label=below right:$-$,fill,circle,inner sep=1.3pt] at (Py) {};
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (Pz) {};
+      \node[label=below:$-$,fill,circle,inner sep=1.3pt] at (Pxy) {};
+      \node[label=above right:$+$,fill,circle,inner sep=1.3pt] at (Pyz) {};
+      \node[label=above left:$+$,fill,circle,inner sep=1.3pt] at (Pxz) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (O) {};
+    \end{tikzpicture}\\
+    \bottomrule
+  \end{tabu}
+\end{center}
+We then continue our processing:
+\begin{lstlisting}
+        # Check that the intersection lies on a face
+        distance, midpoint = get(intersect)
+        if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
+            continue
+        end
+
+        push!(face_intersections, normal)
+\end{lstlisting}
+We check whether or not the lines caused by connecting the estimated zero crossings of the edges on the face intersect.
+If they do, we mark that face as featuring an intersection, as shown here:
+\begin{center}
+  \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+    % The vertex at V
+    \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+    \tdplotsetcoord{O}{0}{0}{0}
+
+    \draw[]
+    (0,0,0) -- (Px)
+    (0,0,0) -- (Py)
+    (0,0,0) -- (Pz);
+
+    \draw[]
+    (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+    \draw[]
+    (Pyz) -- (Py) -- (Pxy);
+
+    \draw[fill,fill opacity=0.15] (P) -- (Pyz) -- (Py) -- (Pxy);
+    \draw[fill,fill opacity=0.15] (O) -- (Pz) -- (Pxz) -- (Px);
+
+    \draw [thick, name path=face1a] ($ (Px)!0.63!(Pxz) $)--($ (O)!0.3!(Pz) $);
+    \draw [thick, name path=face1b] ($ (Pxz)!0.4!(Pz) $)--($ (Px)!0.75!(O) $);
+
+    \draw [thick, name path=face2a] ($ (Pxy)!0.7!(P) $)--($ (Py)!0.3!(Pyz) $);
+    \draw [thick, name path=face2b] ($ (P)!0.63!(Pyz) $)--($ (Pxy)!0.45!(Py) $);
+
+    \path [name intersections={of=face1a and face1b,by=F1}];
+    \path [name intersections={of=face2a and face2b,by=F2}];
+
+    \node[fill,circle,inner sep=1.7pt] at (F1) {};
+    \node[fill,circle,inner sep=1.7pt] at (F2) {};
+  \end{tikzpicture}
+\end{center}
+Continuing our processing:
+\begin{lstlisting}
+    if length(face_intersections) == 2
+        for normal in face_intersections
+            next_voxel = [x, y, t] + normal
+            if all(1 .<= next_voxel .<= size(visited))
+                union!(result, marching_cubes(next_voxel..., visited))
+            end
+        end
+        push!(result, (x, y, t))
+    end
+\end{lstlisting}
+If there are exactly two faces with zero crossings, then the voxel contains an edge segment.
+We then extend the line defined by connecting the estimated intersection points on each face into the neighboring voxels:
+\begin{center}
+  \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+    % The vertex at V
+    \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+    \tdplotsetcoord{O}{0}{0}{0}
+
+    \draw[]
+    (0,0,0) -- (Px)
+    (0,0,0) -- (Py)
+    (0,0,0) -- (Pz);
+
+    \draw[]
+    (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+    \draw[]
+    (Pyz) -- (Py) -- (Pxy);
+
+    \draw[transform canvas={shift={(Py)}}]
+    (0,0,0) -- (Px)
+    (0,0,0) -- (Py)
+    (0,0,0) -- (Pz);
+    \draw[transform canvas={shift={(Py)}}]
+    (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+    \draw[transform canvas={shift={(Py)}}]
+    (Pyz) -- (Py) -- (Pxy);
+
+    \draw[transform canvas={shift={($(0,0,0) - (Py)$)}}]
+    (0,0,0) -- (Px)
+    (0,0,0) -- (Py)
+    (0,0,0) -- (Pz);
+    \draw[transform canvas={shift={($(0,0,0) - (Py)$)}}]
+    (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+    \draw[transform canvas={shift={($(0,0,0) - (Py)$)}}]
+    (Pyz) -- (Py) -- (Pxy);
+
+    \draw[fill,fill opacity=0.15] (P) -- (Pyz) -- (Py) -- (Pxy);
+    \draw[fill,fill opacity=0.15] (O) -- (Pz) -- (Pxz) -- (Px);
+
+    \draw [dashed, name path=face1a] ($ (Px)!0.63!(Pxz) $)--($ (O)!0.3!(Pz) $);
+    \draw [dashed, name path=face1b] ($ (Pxz)!0.4!(Pz) $)--($ (Px)!0.75!(O) $);
+
+    \draw [dashed, name path=face2a] ($ (Pxy)!0.7!(P) $)--($ (Py)!0.3!(Pyz) $);
+    \draw [dashed, name path=face2b] ($ (P)!0.63!(Pyz) $)--($ (Pxy)!0.45!(Py) $);
+
+    \path [name intersections={of=face1a and face1b,by=F1}];
+    \path [name intersections={of=face2a and face2b,by=F2}];
+
+    \draw [thick, <->] ($(F1)!-0.5!(F2)$) -- ($(F1)!1.5!(F2)$);
+
+    \node[fill,circle,inner sep=1.7pt] at (F1) {};
+    \node[fill,circle,inner sep=1.7pt] at (F2) {};
+
+  \end{tikzpicture}
+\end{center}
+The process is then repeated on the neighboring voxels until we have traversed the entire edge connected to this point.
+
+
+% \begin{tikzpicture}[tdplot_main_coords]
+%   % The vertex at V
+%   \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+%   \tdplotsetcoord{O}{0}{0}{0}
+
+%   \draw[thick]
+%   (0,0,0) -- (Px)
+%   (0,0,0) -- (Py)
+%   (0,0,0) -- (Pz);
+
+%   \draw[thick]
+%   (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+%   \draw[thick]
+%   (Pyz) -- (Py) -- (Pxy);
+
+%   \node[label=above:$P$,fill,circle,inner sep=1.75pt] at (P) {};
+%   \node[label=below left:$Px$,fill,circle,inner sep=1.75pt] at (Px) {};
+%   \node[label=below right:$Py$,fill,circle,inner sep=1.75pt] at (Py) {};
+%   \node[label=above:$Pz$,fill,circle,inner sep=1.75pt] at (Pz) {};
+%   \node[label=below:$Pxy$,fill,circle,inner sep=1.75pt] at (Pxy) {};
+%   \node[label=above right:$Pyz$,fill,circle,inner sep=1.75pt] at (Pyz) {};
+%   \node[label=above left:$Pxz$,fill,circle,inner sep=1.75pt] at (Pxz) {};
+%   \node[label=above right:$O$,fill,circle,inner sep=1.75pt] at (O) {};
+% \end{tikzpicture}
 \section*{Appendix}
 
 % \lstinputlisting[caption={edge\_detect.jl},label=edge_detect,frame=none]{edge_detect.jl}
