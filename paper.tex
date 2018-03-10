@@ -73,7 +73,7 @@
 \end{abstract}
 
 \section{Introduction}
-Detecting edges in images has long been a persistent problem in image processing.  
+Detecting edges in images has been a common problem in image processing.  
 Generally speaking, the majority of algorithms usually detect edges by identifying at least one of the following features:
 \begin{itemize}
 \item large discontinuities in luminance values
@@ -93,8 +93,8 @@ It follows that we can then define a scale space edge as a set of connected poin
 The motivation for this paper comes from observing how much the scale affects the detection of edges in an image. 
 Most common edge detection algorithms are applied only at a scale of zero, i.e. the original image.
 Common methods for detecting edges in images usually consist of convolving a discrete derivative matrix with the image to calculate spatial derivatives of the image.
-Algorithms like the Sobel, Canny, Roberts, and Prewitt do just exactly that. 
-The problem with these methods is that they are not very adaptable, and they could be possibly neglecting useful information at other scales. 
+Algorithms like the Sobel, Canny, Roberts, and Prewitt perform such an operation. 
+The problem with these methods is that they are not very adaptable, and they could neglect useful information at other scales. 
 For example, given an image ${F}$, the following computes the gradient of the image in the $x$ and $y$ direction using the Sobel operator
 \begin{equation}
 	{G}_x =
@@ -112,13 +112,12 @@ For example, given an image ${F}$, the following computes the gradient of the im
 	\end{bmatrix}
 	* {F}
 \end{equation}
-Our algorithm will consist of convolving the ando5 matrix, which is more rotationally symmetric than the other operators listed above, with the image. 
+Our algorithm will consist of convolving the $5 \times 5$ matrix, which is more rotationally symmetric than the other operators listed above, with the image. 
 This convolution will be be performed at multiple scales to evaluate the criteria necessary for classifying a point as an edge point in the scale space. 
-We then run a marching cubes algorithm to connect the local maxima and list our edges based on strength. 
-The ability to list edges and classify their strengths is one of the advantages that the scale space edge algorithm has over conventional methods. 
+We then run a marching cubes algorithm to connect the local maxima and list our edges based on strength.  
 
 \section{Scale Space and Its Derivatives}
-To understand how exactly we detect edges in the scale space, we must first define what the scale space is.
+To understand how edges are defined in scale space, we must first define what the scale space is.
 If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as the following convolution
 \begin{equation}
   L(x,y;t) = g(x,y;t) * f(x,y)
@@ -157,7 +156,6 @@ where $I_n$ is the modified Bessel functions of integer order given by
   I_n(x) = i^{-n}J_{n}(ix) = \sum_{m=0}^{\infty}\frac{1}{m!\Gamma(m+n+1)}\left(\frac{x}{2}\right)^{2m+n}
 \end{equation}
 Now that the one dimensional case is understood for the scale space, we can expand this to two dimensions.
-After all, images are composed of two dimensions, so it makes sense that these operators can act on two dimensional functions.
 The two dimensional scale space representation for discrete variables is given by the following
 \begin{equation}
   L(x,y;t) = \sum_{m=-\infty}^{\infty}\sum_{n=-\infty}^{\infty}T(m;t)T(n;t)f(x-m,y-n)
@@ -178,7 +176,7 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
 
 \section{Defining an Edge in Scale Space}
 A useful system to use when dealing with image features is to set up a coordinate system in terms of the local directional derivatives.
-In this case, we do the same thing as the paper does and setup a coordinate system $(u,v)$ at any point $(x_0,y_0)$ on the image.
+Here we setup a coordinate system $(u,v)$ at any point $(x_0,y_0)$ on the image.
 Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0)$, and the $u$-axis is perpendicular to the gradient direction at the same point. So then we define necessary angles as \cite{Lindeberg1998}
 \begin{equation}
   \begin{pmatrix}
@@ -192,7 +190,7 @@ Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0
   \end{pmatrix}
   \Bigg|_{(x_0,y_0)}
 \end{equation}
-With our angles defined, we can then define our $(u,v)$ coordinate system by taking the respective partial derivatives of our spatial coordinate system
+With our angle defined, we can then define our $(u,v)$ coordinate system by taking the respective partial derivatives of our spatial coordinate system
 \begin{align}
   \partial_u &= \sin{\alpha}\; \partial_x - \cos{\alpha}\; \partial_y \\
   \partial_v &= \cos{\alpha}\; \partial_x + \sin{\alpha}\; \partial_y
@@ -249,7 +247,7 @@ Its calculations are as follows \cite{Lindeberg1998}
   \end{aligned}
 \end{equation}
 Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by \cite{Lindeberg1998}
-\begin{equation}
+\begin{equation} \label{estr}
   G(\Gamma) = \int_{(x;t) \in \Gamma} \sqrt{(G_{\gamma}L)(x;t)} \,\, \dif s
 \end{equation}
 where $\dif s^2=\dif x^2+\dif y^2$.
@@ -830,7 +828,7 @@ end
 \subsection{Selecting images by strength}
 
 Now that we have found all scale space edges, it remains to select an ``interesting'' subset of them to display.
-To do this, we rank the edges by their integrated edge strength as described in the Theory and take the first $n$ of them to be sufficiently important to display.
+To do this, we rank the edges by their integrated edge strength as described in (Eq. \ref{estr}) and take the first $n$ of them to be sufficiently important to display.
 % TODO: fix this
 \begin{lstlisting}
 function edge_importance(edge)
@@ -871,7 +869,7 @@ end
 To demonstrate the results of our program, we will use the following test image.
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.3]{Images/block/block_orig.jpg}
+  \includegraphics[scale=0.36]{Images/block/block_orig.jpg}
   \caption{Block test image}
   \label{block_orig}
 \end{figure}
@@ -879,7 +877,7 @@ To demonstrate the results of our program, we will use the following test image.
 Here is the result of thresholding the gradient as calculated by the Sobel operator for this image:
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.3]{Images/block/sobel_block.jpg}
+  \includegraphics[scale=0.36]{Images/block/sobel_block.jpg}
   \caption{The edges of the block image according to the Sobel gradient}
   \label{block_sobel}
 \end{figure}
@@ -887,7 +885,7 @@ Here is the result of thresholding the gradient as calculated by the Sobel opera
 In contrast, our edge detection algorithm produces the following result:
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.3]{Images/block/block_final.png}
+  \includegraphics[scale=0.36]{Images/block/block_final.png}
   \caption{The final output of our program on the block image}
   \label{block_final}
 \end{figure}
@@ -897,7 +895,7 @@ This is due to spurious fragmentation of the edge in our marching cubes algorith
 We can see this by displaying the full set of edges:
 \begin{figure}[H]
   \centering
-  \includegraphics[scale=0.3]{Images/block/block_all_edges.png}
+  \includegraphics[scale=0.36]{Images/block/block_all_edges.png}
   \caption{All edges of the block image as detected by our program}
   \label{block_all_edges}
 \end{figure}
@@ -908,7 +906,7 @@ Subjectively, our results seem quite reasonable for the given inputs.
 Further improvement can be made to fix spurious edge segmentation in the future.
 \begin{table}[H]
   \caption{Results of running our program on other images}
-  \label{t_vvv}
+  \label{results}
   \centering
   \tabulinesep=0.3em
   \begin{tabu}to \textwidth{X[c,m]X[c,m]}
@@ -923,6 +921,7 @@ Further improvement can be made to fix spurious edge segmentation in the future.
 \end{table}
 
 \section*{Appendix}
+Note all images here are normalized, so only relative differences within the same image are relevant.
 \begin{table}[H]
   \caption{Gradient magnitude}
   \label{t_gma}
