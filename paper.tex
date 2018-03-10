@@ -810,6 +810,64 @@ This allows us to recursively trace out the full connected edge at this point.
 %   \node[label=above right:$O$,fill,circle,inner sep=1.75pt] at (O) {};
 % \end{tikzpicture}
 
+
+
+\section{Results}
+\subsection{Diffuse and sharp edges in the same photo}
+To demonstrate the results of our program, we will use the following test image.
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{Images/block/block_orig.jpg}
+  \caption{Block test image}
+  \label{block_orig}
+\end{figure}
+
+Here is the result of thresholding the gradient as calculated by the Sobel operator for this image:
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{Images/block/sobel_block.jpg}
+  \caption{The edges of the block image according to the Sobel gradient}
+  \label{block_sobel}
+\end{figure}
+
+In contrast, our edge detection algorithm produces the following result:
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{Images/block/block_final.png}
+  \caption{The final output of our program on the block image}
+  \label{block_final}
+\end{figure}
+The edge of the shadow is clearly present in the image, a clear improvement over the Sobel gradient of the image.
+Unfortunately, the edge of the shadow is not a continuous path.
+This is due to spurious fragmentation of the edge in our marching cubes algorithm due to our inability to resolve ambiguous situations.
+We can see this by displaying the full set of edges:
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{Images/block/block_all_edges.png}
+  \caption{All edges of the block image as detected by our program}
+  \label{block_final}
+\end{figure}
+In this image, we see that the full edge of the shadow is captured, although there are also many spurious images formed by structures in the background that we do not want to detect.
+
+\subsection{Other results}
+Subjectively, our results seem quite reasonable for the given inputs.
+Further improvement can be made to fix spurious edge segmentation in the future.
+\begin{table}[H]
+  \caption{Results of running our program on other images}
+  \label{t_vvv}
+  \centering
+  \tabulinesep=0.3em
+  \begin{tabu}to \textwidth{X[c,m]X[c,m]}
+    \toprule
+    Original & Result\\
+    \midrule
+    \includegraphics[height=18em]{{{Images/lena/lena_orig}}} & \includegraphics[height=18em]{{{Images/lena/lena_final}}} \\
+    \includegraphics[height=18em]{{{Images/mandrill/mandrill_orig}}} & \includegraphics[height=18em]{{{Images/mandrill/mandrill_final}}} \\
+    \includegraphics[height=18em]{{{Images/peppers/peppers_orig}}} & \includegraphics[height=18em]{{{Images/peppers/peppers_final}}} \\
+    \bottomrule
+  \end{tabu}
+\end{table}
+
 \section*{Appendix}
 \begin{table}[H]
   \caption{Gradient magnitude}
