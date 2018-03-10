@@ -510,7 +510,7 @@ GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^
 \end{lstlisting}
 To do this, we transpose the scales array into the third matrix, and then broadcast it across the scale space to form the normalization coefficients.
 
-$\mathcal G_\gamma L$ represents the normalized gradient magnitude, which serves as our edge strength measure, $\partial_t(\mathcal G_\gamma L)$ represents the first partial of $\mathcal G_\gamma L$ with respect to the scale parameter as described in (Eq. \ref{Gl})
+$\mathcal G_\gamma L$ represents the normalized gradient magnitude, which serves as our edge strength measure, $\partial_t(\mathcal G_\gamma L)$ represents the first partial of $\mathcal G_\gamma L$ with respect to the scale parameter as described in (Eq. \ref{dtGl})
 and $\partial_{tt}(\mathcal G_\gamma L)$ represents the inverted sign of the second partial of $\mathcal G_\gamma L$ with respect to scale.
 These definitions describe the local maxima of of the edge strength with respect to the scale parameter.
 
