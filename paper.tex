@@ -1,5 +1,5 @@
 %&pdflatex
-\documentclass[draft]{article}
+\documentclass{article}
 \usepackage[final]{nips_2017}
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
@@ -11,7 +11,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{amsmath}
 \usepackage{mathtools}
-\usepackage[draft]{graphicx}
+\usepackage{graphicx}
 \usepackage{tabu}
 \usepackage{mathrsfs}
 \usepackage{morefloats}
@@ -58,7 +58,7 @@
 \title{Scale Space Edge Detection}
 
 \author{
-  Nick Draper, Jonathan Hayase\\
+  Nicholas Draper, Jonathan Hayase\\
   Seminar in Differential Geometry\\
   Harvey Mudd College
 }
@@ -69,21 +69,20 @@
 \begin{abstract}
   Scale space representation of an image is the idea that a two dimensional image can be represented by a collection of smoothed images.
   This paper documents how using such a representation can be useful for detecting edges in an image.
-  The scale space allows for a classification of how strong different edges are in the image from very fine to coarse ones. 
+  In addition to the theory, this paper also covers an in depth implementation of the algorithm written in the Julia programming language.
 \end{abstract}
 
 \section{Introduction}
-
-Detecting edges in images has been a problem in image processing for a long time.
-Generally speaking, the majority of algorithms are usually checking the image for some of the following features:
+Detecting edges in images has long been a persistent problem in image processing.  
+Generally speaking, the majority of algorithms usually detect edges by identifying at least one of the following features:
 \begin{itemize}
 \item large discontinuities in luminance values
 \item discontinuities in different object orientations
 \item large discontinuities in the intensity gradient
 \end{itemize}
 In this paper, we will be using the scale space representation of an image to approach the edge detection problem.
-When we say scale, we refer to how much smoothing has been applied to the image. 
-The theory behind the scale space is that detecting one-dimensional image features, like edges, may be dependent on what scale we operate at \cite{Lindeberg1998}. 
+Scale refers to how much smoothing is applied to the image. 
+The theory behind the scale space representation is that detecting one-dimensional image features, like edges, may be dependent on what scale we operate at \cite{Lindeberg1998}. 
 It follows that we can then define a scale space edge as a set of connected points that:
 \begin{itemize}
 \item have a gradient that takes on a local maximum value in the direction of the gradient\cite{Lindeberg1998}
@@ -91,10 +90,11 @@ It follows that we can then define a scale space edge as a set of connected poin
 \end{itemize}
 
 \section{Motivation}
-The motivation for this paper comes from observing the difference in quality of the scale space edge detection versus more conventional algorithms.
-Common methods for detecting edges in images usually consist of convolving a discrete derivative matrix with the image that calculates the image's derivatives in the horizontal and vertical directions.
+The motivation for this paper comes from observing how much the scale affects the detection of edges in an image. 
+Most common edge detection algorithms are applied only at a scale of zero, i.e. the original image.
+Common methods for detecting edges in images usually consist of convolving a discrete derivative matrix with the image to calculate spatial derivatives of the image.
 Algorithms like the Sobel, Canny, Roberts, and Prewitt do just exactly that. 
-The problem with these methods is that they are not very adaptable. 
+The problem with these methods is that they are not very adaptable, and they could be possibly neglecting useful information at other scales. 
 For example, given an image ${F}$, the following computes the gradient of the image in the $x$ and $y$ direction using the Sobel operator
 \begin{equation}
 	{G}_x =
@@ -115,11 +115,11 @@ For example, given an image ${F}$, the following computes the gradient of the im
 Our algorithm will consist of convolving the ando5 matrix, which is more rotationally symmetric than the other operators listed above, with the image. 
 This convolution will be be performed at multiple scales to evaluate the criteria necessary for classifying a point as an edge point in the scale space. 
 We then run a marching cubes algorithm to connect the local maxima and list our edges based on strength. 
-The ability to list edges and classify their strengths is the main advantage that the scale space edge algorithm has over conventional methods. 
+The ability to list edges and classify their strengths is one of the advantages that the scale space edge algorithm has over conventional methods. 
 
 \section{Scale Space and Its Derivatives}
 To understand how exactly we detect images in the scale space, we must first define what the scale space is.
-If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as 
+If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as the following convolution
 \begin{equation}
   L(x,y;t) = g(x,y;t) * f(x,y)
 \end{equation}
@@ -336,7 +336,7 @@ In this case we can define our normalized gradient magnitude as \cite{Lindeberg1
 
 The first scale derivative of the gradient magnitude results are found on page \pageref{t_tgma}. 
 Its calculations are as follows \cite{Lindeberg1998}
-\begin{equation}
+\begin{equation} \label{dtGl}
   \partial_t (G_{\gamma}L) = \gamma t^{\gamma-1}(L_x^2+L_y^2) + t^{\gamma}(L_x(L_{xxx}+L_{yyy})+L_y(L_{xxy} + L_{yyy}))
 \end{equation}
 Then the second scale derivative of the gradient magnitude results are found on page \pageref{t_ttgma}.
@@ -392,8 +392,7 @@ end
 Our strategy is to apply convolutions to images in batches.
 For a set $k$ of convolution matrices, we first merge them into a single larger matrix $K$ by reduction via convolution.
 We can do this in any order, since convolutions are associative and commutative.
-We do this using a highly numerically stable convolution algorithm described in \url{https://arxiv.org/abs/1612.08825}.
-% TODO: Cite this paper
+We do this using a highly numerically stable convolution algorithm described in \cite{Amini}.
 We do this to avoid accumulating numerical errors by repeatedly convolving the image using a less stable algorithm, since the matrices we will be combining are generally small, it is reasonable to use a slower, but more exact algorithm on them.
 
 We then convolve the image with $K$ using a fast tiled FFT algorithm provided by \href{https://github.com/JuliaImages/ImageFiltering.jl}{ImageFiltering.jl}, which is less numerically stable but features faster asymptotic times for large matrices which is helpful as our images can have millions of pixels.
@@ -429,8 +428,7 @@ scales = exp.(linspace(log(0.1), log(256), 40))
 L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
 \end{lstlisting}
 
-To generate the scale space itself, we choose a set of 40 scales with uniform effective scale distribution, as described in \url{http://www.diva-portal.org/smash/get/diva2:473381/FULLTEXT01.pdf}.
-% TODO: Cite this
+To generate the scale space itself, we choose a set of 40 scales with uniform effective scale distribution, as described in \cite{Lindeberg1993b}.
 We then create $40$ copies of the image, and smooth each images by their respective gaussian kernels.
 We then concatenate them to form a rank $3$ tensor representing the scale space.
 
@@ -444,8 +442,7 @@ Dx /= sum(Dx .* (Dx .> 0))
 Dy /= sum(Dy .* (Dy .> 0))
 \end{lstlisting}
 
-The derivative matrices used for our project are the $5\times 5$ matrices defined in \url{http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=841757&tag=1}.
-% TODO: Cite this
+The derivative matrices used for our project are the $5\times 5$ matrices defined in \cite{Ando}.
 Written out, they are:
 \begin{equation}
   \begin{aligned}
@@ -460,9 +457,9 @@ Written out, they are:
     [D_y] &= [D_x]^T
   \end{aligned}
 \end{equation}
-Additionally, we normalize the magnitudes of the derivative matrices, such that the sum of the positive values of the matrix sum to $1$, as described in \url{https://link.springer.com/article/10.1007/BF01664794}.
+Additionally, we normalize the magnitudes of the derivative matrices, such that the sum of the positive values of the matrix sum to $1$, as described in \cite{Lindeberg1993}.
 This is so the overall magnitude of the derivative remains comparable across derivatives of different order.
-% TODO: Cite this.
+
 We then define a framework for taking the partial derivatives of a scale space in the spatial directions using these operators.
 \begin{lstlisting}
 function convolve_scale_space(L, kers...)
@@ -513,8 +510,7 @@ GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^
 \end{lstlisting}
 To do this, we transpose the scales array into the third matrix, and then broadcast it across the scale space to form the normalization coefficients.
 
-$\mathcal G_\gamma L$ represents the normalized gradient magnitude, which serves as our edge strength measure, $\partial_t(\mathcal G_\gamma L)$ represents the first partial of $\mathcal G_\gamma L$ with respect to the scale parameter as described in the Theory,
-% TODO: reference this
+$\mathcal G_\gamma L$ represents the normalized gradient magnitude, which serves as our edge strength measure, $\partial_t(\mathcal G_\gamma L)$ represents the first partial of $\mathcal G_\gamma L$ with respect to the scale parameter as described in (Eq. \ref{Gl})
 and $\partial_{tt}(\mathcal G_\gamma L)$ represents the inverted sign of the second partial of $\mathcal G_\gamma L$ with respect to scale.
 These definitions describe the local maxima of of the edge strength with respect to the scale parameter.
 
