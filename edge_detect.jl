@@ -14,13 +14,6 @@ scales = exp.(linspace(log(0.1), log(256), 40))
 # Load the image
 img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
 
-# Define derivative convolution matrices
-Dy = Array(parent(Kernel.ando5()[1]))
-Dx = Array(parent(Kernel.ando5()[2]))
-
-Dx /= sum(Dx .* (Dx .> 0))
-Dy /= sum(Dy .* (Dy .> 0))
-
 function combine_kernels(kers...)
     return reduce(fastconv, kers)
 end
@@ -50,11 +43,18 @@ function convolve_gaussian(img, t)
     return imfilter(img, kernel)
 end
 
+L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
+
+# Define derivative convolution matrices
+Dy = Array(parent(Kernel.ando5()[1]))
+Dx = Array(parent(Kernel.ando5()[2]))
+
+Dx /= sum(Dx .* (Dx .> 0))
+Dy /= sum(Dy .* (Dy .> 0))
+
 function spatial_derivative(L, x, y)
     return convolve_scale_space(L, fill(Dx, x)..., fill(Dy, y)...)
 end
-
-L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
 
 Lx = spatial_derivative(L, 1, 0)
 Ly = spatial_derivative(L, 0, 1)
