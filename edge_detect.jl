@@ -7,9 +7,8 @@ using FileIO
 using SpecialFunctions
 using FastConv # Pkg.clone("https://github.com/aamini/FastConv.jl")
 
-# Parameters
+# Hyper Parameters
 gamma = 1
-scales = exp.(linspace(log(0.1), log(256), 40))
 
 # Load the image
 img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
@@ -43,6 +42,7 @@ function convolve_gaussian(img, t)
     return imfilter(img, kernel)
 end
 
+scales = exp.(linspace(log(0.1), log(256), 40))
 L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
 
 # Define derivative convolution matrices
