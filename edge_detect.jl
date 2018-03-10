@@ -7,12 +7,6 @@ using FileIO
 using SpecialFunctions
 using FastConv # Pkg.clone("https://github.com/aamini/FastConv.jl")
 
-# Hyper Parameters
-gamma = 1
-
-# Load the image
-img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
-
 function combine_kernels(kers...)
     return reduce(fastconv, kers)
 end
@@ -22,25 +16,20 @@ function convolve_image(I, kers...)
     return imfilter(I, centered(kernel))
 end
 
-function convolve_scale_space(L, kers...)
-    return mapslices(
-        scale_slice -> convolve_image(scale_slice, kers...),
-        L,
-        (1,2)
-    )
-end
-
 function gaussian_kernel(t, length)
     G = hcat(besselix.(-length:length, t))
-    return reflect(centered(fastconv(G, G')))
+    return combine_kernels(G, G')
 end
 
 function convolve_gaussian(img, t)
     # The dimension of the convolution matrix
     length = 4*ceil(Int, sqrt(t))
     kernel = gaussian_kernel(t, length)
-    return imfilter(img, kernel)
+    return convolve_image(img, kernel)
 end
+
+# Load the image
+img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
 
 scales = exp.(linspace(log(0.1), log(256), 40))
 L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
@@ -51,6 +40,14 @@ Dx = Array(parent(Kernel.ando5()[2]))
 
 Dx /= sum(Dx .* (Dx .> 0))
 Dy /= sum(Dy .* (Dy .> 0))
+
+function convolve_scale_space(L, kers...)
+    return mapslices(
+        scale_slice -> convolve_image(scale_slice, kers...),
+        L,
+        (1,2)
+    )
+end
 
 function spatial_derivative(L, x, y)
     return convolve_scale_space(L, fill(Dx, x)..., fill(Dy, y)...)
@@ -81,6 +78,10 @@ const Lvvv = @. (Lx^3*Lxxx + 3Lx^2*Ly*Lxxy + 3Lx*Ly^2*Lxyy + Ly^3*Lyyy) < 0
 # Shape the scales vector to be a vector with depth
 scales3 = reshape(scales, 1, 1, length(scales))
 
+# Gamma defines the scale bias, larger numbers = more bias towards diffuse edges.
+# The value 1 represents no bias.
+gamma = 1
+
 # Definition of the gradient edge strength (magnitude)
 const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
 
@@ -94,7 +95,7 @@ function linear_interpolate(p1, p2, v1, v2)
     return (abs(v1)*collect(p1) + abs(v2)*collect(p2))/(abs(v1) + abs(v2))
 end
 
-function segment_intersect(p1, p2, p3, p4, e)
+function line_distance(p1, p2, p3, p4, e)
     p13, p43, p21 = p1 - p3, p4 - p3, p2 - p1
 
     # If the line segments have zero length
@@ -180,8 +181,6 @@ function marching_cubes(x, y, t, visited)
         end
     end
 
-    const epsilon = 10 * eps()
-
     face_intersections = []
     result = Set()
     for (normal, face) in cube_faces
@@ -204,13 +203,14 @@ function marching_cubes(x, y, t, visited)
         end
 
         # Check the intersection of the segments defined by the two lines
-        intersect = segment_intersect(Z1_zeros..., Z2_zeros..., epsilon)
-        if isnull(intersect)
+        distance_check = line_distance(Z1_zeros..., Z2_zeros..., epsilon)
+        if isnull(distance_check)
             continue
         end
 
         # Check that the intersection lies on a face
-        distance, midpoint = get(intersect)
+        const epsilon = 10 * eps()
+        distance, midpoint = get(distance_check)
         if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
             continue
         end
