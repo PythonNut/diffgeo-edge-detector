@@ -810,7 +810,61 @@ This allows us to recursively trace out the full connected edge at this point.
 %   \node[label=above right:$O$,fill,circle,inner sep=1.75pt] at (O) {};
 % \end{tikzpicture}
 
+Then, to find all edges in the image, we simply run the marching cubes algorithm on every voxel in the image like so:
+\begin{lstlisting}
+function find_edges()
+    voxel_visited = falses((x->x-1).(size(L)))
+    edges = []
+    p = Progress(prod(size(voxel_visited)), 1)
+    @nloops 3 i voxel_visited begin
+        edge = marching_cubes((@ntuple 3 i)..., voxel_visited)
+        if length(edge) > 0
+            push!(edges, edge)
+        end
+        next!(p)
+    end
+    return edges
+end
+\end{lstlisting}
 
+\subsection{Selecting images by strength}
+
+Now that we have found all scale space edges, it remains to select an ``interesting'' subset of them to display.
+To do this, we rank the edges by their integrated edge strength as described in the Theory and take the first $n$ of them to be sufficiently important to display.
+% TODO: fix this
+\begin{lstlisting}
+function edge_importance(edge)
+    total = 0
+    for (x, y, t) in edge
+        total += sqrt(GL[x,y,t])
+    end
+    return total
+end
+
+function n_strongest_edges(edges, n)
+    return sort(edges, by=edge_importance, rev=true)[1:n]
+end
+\end{lstlisting}
+
+We then have a function to flatten the edge sets back into scale space by iterating though them and forming a boolean tensor if there is a edge inside that voxel.
+\begin{lstlisting}
+function flatten_edges(edges, L)
+    edge_map = falses((x->x-1).(size(L)))
+    for edge in edges
+        for (x, y, t) in edge
+            edge_map[x,y,t] = true
+        end
+    end
+    return edge_map
+end
+\end{lstlisting}
+
+Finally, we flatten the boolean tensor into an image by taking the logical disjunction of all values at a given spatial location in the image.
+\begin{lstlisting}
+function flatten_scale(Lp, func=any)
+    return mapslices(func, Lp, 3)
+end
+\end{lstlisting}
 
 \section{Results}
 \subsection{Diffuse and sharp edges in the same photo}
