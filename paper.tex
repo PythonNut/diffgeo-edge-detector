@@ -1,5 +1,5 @@
 %&pdflatex
-\documentclass{article}
+\documentclass[draft]{article}
 \usepackage[final]{nips_2017}
 \usepackage[utf8]{inputenc} % allow utf-8 input
 \usepackage[T1]{fontenc}    % use 8-bit T1 fonts
@@ -359,19 +359,20 @@ where $\dif s^2=\dif x^2+\dif y^2$.
 We then perform a marching cubes algorithm that will connect local points that we have identified as edge points. The details for this can be found on page \pageref{mcube}.
 
 \section{Implementation}
-For our implementation we will be using the following image to run our tests on
-\begin{figure}[H]
-  \centering
-  \includegraphics[scale=0.5]{Images/lena/lena_orig.png}
-  \caption{Original Lena Image}
-  \label{lena_o}
-\end{figure}
-Figure \ref{lena_o} is a standard test image for image processing and is good for our purposes since it contains a variety of different edges with different strengths.
 
-So what we first do is define our convolution functions that we will be using in code.
+\subsection{Introduction}
+
+We have chosen to implement our edge detector in the \href{https://julialang.org/}{Julia} scientific computing language.
+We chose Julia because it is very fast and has strong support for linear algebra and image processing through third party packages.
+Our implementation can be found in full at \url{https://github.com/PythonNut/diffgeo-edge-detector}.
+
+\subsection{Convolution Framework}
+
+Both our smoothing and derivative operators are based on discrete approximations represented by convolution matrices.
+Therefore, we implement several convenience functions to apply convolutions to images quickly and with a high degree of numerical stability.
 \begin{lstlisting}
 function combine_kernels(kers...)
-    return reduce(conv2, kers)
+    return reduce(fastconv, kers)
 end
 
 function convolve_image(I, kers...)
@@ -386,33 +387,66 @@ function convolve_scale_space(L, kers...)
         (1,2)
     )
 end
+\end{lstlisting}
 
-function convolve_gaussian(img, sigma)
+Our strategy is to apply convolutions to images in batches.
+For a set $k$ of convolution matrices, we first merge them into a single larger matrix $K$ by reduction via convolution.
+We can do this in any order, since convolutions are associative and commutative.
+We do this using a highly numerically stable convolution algorithm described in \url{https://arxiv.org/abs/1612.08825}.
+% TODO: Cite this paper
+We do this to avoid accumulating numerical errors by repeatedly convolving the image using a less stable algorithm, since the matrices we will be combining are generally small, it is reasonable to use a slower, but more exact algorithm on them.
+
+We then convolve the image with $K$ using a fast tiled FFT algorithm provided by \href{https://github.com/JuliaImages/ImageFiltering.jl}{ImageFiltering.jl}, which is less numerically stable but features faster asymptotic times for large matrices which is helpful as our images can have millions of pixels.
+
+\subsection{Scale Space Generation}
+
+Now, we can generate a tensor representation of scale space.
+\begin{lstlisting}
+function gaussian_kernel(t, length)
+    G = hcat(besselix.(-length:length, t))
+    return combine_kernels(G, G')
+end
+
+function convolve_gaussian(img, t)
     # The dimension of the convolution matrix
-    length = 8*ceil(Int, sigma) + 1
-    return imfilter(img, reflect(Kernel.gaussian((sigma, sigma), (length, length))))
+    length = 4*ceil(Int, sqrt(t))
+    kernel = gaussian_kernel(t, length)
+    return convolve_image(img, kernel)
 end
 \end{lstlisting}
-These will be used for computing all the neccessary two dimensional matrix convolutions that we will use throughout the rest of the code.
-The next step is to then define our range of scales used and which derivative kernels we will be using to compute two dimensional discrete spatial derivatives.
-The following code shows the definitions for our variables that will be used for all further calculations. 
+
+First, we compute a discrete approximation of the gaussian kernel using the bessel function.
+To do this, we take advantage of the separability property of the gaussian kernel, which states that an $N$-dimensional gaussian kernel $g_N$ can be written:
+\[G_N(x_1, \cdots, x_N, t) = G(x_1, t) * \cdots * G(x_N, t)\]
+This allows us to compute a $1$-dimensional gaussian kernel $G$, and produce a $2$-dimensional kernel by convolving $G$ with its transpose.
+
+We then compute an appropriately large kernel size, such that the values of the matrix near the edges are close to the machine epsilon.
+This is important, as we wish to avoid blocking artifacts in our smoothing as a result of our discrete approximation.
+We then apply the generated gaussian kernel to the image.
 \begin{lstlisting}
-# Parameters
-gamma = 1
-scales = exp.(linspace(0, log(50), 40))
+img = float.(ColorTypes.Gray.(load("Images/block.jpg")))
+scales = exp.(linspace(log(0.1), log(256), 40))
+L = cat(3, (convolve_gaussian(img, t) for t in scales)...)
+\end{lstlisting}
 
-# Load the image
-img = float.(ColorTypes.Gray.(testimage("lena_color_512")))
+To generate the scale space itself, we choose a set of 40 scales with uniform effective scale distribution, as described in \url{http://www.diva-portal.org/smash/get/diva2:473381/FULLTEXT01.pdf}.
+% TODO: Cite this
+We then create $40$ copies of the image, and smooth each images by their respective gaussian kernels.
+We then concatenate them to form a rank $3$ tensor representing the scale space.
 
-# Define derivative convolution matrices
+\subsection{Discrete Derivatives}
+We now define our matrix approximations of the derivative operators.
+\begin{lstlisting}
 Dy = Array(parent(Kernel.ando5()[1]))
 Dx = Array(parent(Kernel.ando5()[2]))
 
-# Normalized the derivatives
 Dx /= sum(Dx .* (Dx .> 0))
 Dy /= sum(Dy .* (Dy .> 0))
 \end{lstlisting}
-The derivative matrices used for our project are the ando5 matrices which are defined as the following
+
+The derivative matrices used for our project are the $5\times 5$ matrices defined in \url{http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=841757&tag=1}.
+% TODO: Cite this
+Written out, they are:
 \begin{equation}
   \begin{aligned}
     [D_x] &=
@@ -426,68 +460,106 @@ The derivative matrices used for our project are the ando5 matrices which are de
     [D_y] &= [D_x]^T
   \end{aligned}
 \end{equation}
-From this point, we then can compute the scale space representation of our image and compute its spatial derivatives
-The following section of code defines just how to do that.
+Additionally, we normalize the magnitudes of the derivative matrices, such that the sum of the positive values of the matrix sum to $1$, as described in \url{https://link.springer.com/article/10.1007/BF01664794}.
+This is so the overall magnitude of the derivative remains comparable across derivatives of different order.
+% TODO: Cite this.
+We then define a framework for taking the partial derivatives of a scale space in the spatial directions using these operators.
 \begin{lstlisting}
-# Scale space representation
-L = cat(3, (convolve_gaussian(img, sigma) for sigma in scales)...)
+function convolve_scale_space(L, kers...)
+    return mapslices(
+        scale_slice -> convolve_image(scale_slice, kers...),
+        L,
+        (1,2)
+    )
+end
 
-# First order derivatives
-Lx = convolve_scale_space(L, Dx)
-Ly = convolve_scale_space(L, Dy)
-
-# Second order derivatives
-Lxx = convolve_scale_space(Lx, Dx)
-Lxy = convolve_scale_space(Lx, Dy)
-Lyy = convolve_scale_space(Ly, Dy)
-
-# Third order derivatives
-Lxxx = convolve_scale_space(Lxx, Dx)
-Lxxy = convolve_scale_space(Lxx, Dy)
-Lxyy = convolve_scale_space(Lxy, Dy)
-Lyyy = convolve_scale_space(Lyy, Dy)
+function spatial_derivative(L, x, y)
+    return convolve_scale_space(L, fill(Dx, x)..., fill(Dy, y)...)
+end
 \end{lstlisting}
-By convolving our ando5 derivative matrix with the scale space representation, we can take spatial derivatives in both the $x$ and $y$ dimension. To give an idea of what the images look like, we have the following spatial derivatives of the image below.
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.5]{{{Images/lena/lena_Lv_maxima_14.439}}}
-%   \caption{Derivative of image in $x$ direction}
-%   \label{lx}
-% \end{figure}
-% \begin{figure}[H]
-%   \centering
-%   \includegraphics[scale=0.5]{Images/lena/lena_final.png}
-%   \caption{Derivative of image in $y$ direction}
-%   \label{ly}
-% \end{figure}
-Now that we have computed the spatial derivatives of the scale space representation of the image, we can check if we fulfill the conditions in (\ref{eq:c1}). 
-The next step is to then calculate the edge strength derivatives neccessary to fulfill the conditions of (\ref{eq:c2}).
-The code block below shows the computations for the edge strength based on the gradient magnitude and its derivatives.
+To perform spatial convolution, we convolve the scale space independently at every scale.
+To compute $L_{x^iy^j}$ we spatially convolve $i$ times by $[D_x]$ and $j$ times by $[D_y]$.
+Thus, we can compute the higher order partial derivatives of $L$ like so:
 \begin{lstlisting}
-# Shape the scales vector to be a vector with depth
+Lx = spatial_derivative(L, 1, 0)
+Ly = spatial_derivative(L, 0, 1)
+# ...
+Lxxyyy = spatial_derivative(L, 2, 3)
+# ...
+\end{lstlisting}
+We calculate all first, second, third, and fifth order spatial partial derivatives of $L$ for use in the future.
+
+\subsection{Differential Entities}
+
+Now that we have computed the spatial derivatives of the scale space, we can check if we fulfill the conditions described in (Eq. \ref{eq:c1}) and (Eq. \ref{eq:c2}).
+
+\subsubsection{Spatial edge conditions}
+Here is a direct translation of (Eq. \ref{eq:c1}) into Julia.
+\begin{lstlisting}
+Lvv = @. Lx^2*Lxx + 2Lx*Ly*Lxy + Ly^2*Lyy
+Lvvv = @. (Lx^3*Lxxx + 3Lx^2*Ly*Lxxy + 3Lx*Ly^2*Lxyy + Ly^3*Lyyy) < 0
+\end{lstlisting}
+Here, $L_{vv}$ contains the first derivative of the gradient magnitude in the gradient (i.e. $v$) direction, and $L_{vvv}$ contains the inverted sign of the second derivative of the magnitude in the $v$ direction.
+These definitions describe the local maxima of of the edge strength with respect to the spatial direction.
+
+\subsubsection{Scale edge conditions}
+Here is a direct translation of (Eq. \ref{eq:c2}) into Julia.
+\begin{lstlisting}
 scales3 = reshape(scales, 1, 1, length(scales))
-
-# Definition of the gradient edge strength (magnitude)
-const GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
-
-# Derivative of edge strength gradinet with respect to scale
-const GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy))
-
-# Second derivative of edge strength gradinet with respect to scale
-const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
+gamma = 1
+GL = scales3.^(gamma).*(Lx.^2+Ly.^2)
+GLt = @. gamma*scales3^(gamma-1)*(Lx^2 + Ly^2) + scales3^gamma*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy))
+GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*scales3^(gamma-1)*(Lx*(Lxxx + Lxyy) + Ly*(Lxxy + Lyyy)) + scales3^gamma/2*((Lxxx + Lxyy)^2 + (Lxxy + Lyyy)^2 + Lx*(Lxxxxx + 2Lxxxyy + Lxyyyy) + Ly*(Lxxxxy + 2Lxxyyy + Lyyyyy))) < 0
 \end{lstlisting}
-With these calculations we now can check all the conditions necessary to define an edge in scale space. 
+To do this, we transpose the scales array into the third matrix, and then broadcast it across the scale space to form the normalization coefficients.
+
+$\mathcal G_\gamma L$ represents the normalized gradient magnitude, which serves as our edge strength measure, $\partial_t(\mathcal G_\gamma L)$ represents the first partial of $\mathcal G_\gamma L$ with respect to the scale parameter as described in the Theory,
+% TODO: reference this
+and $\partial_{tt}(\mathcal G_\gamma L)$ represents the inverted sign of the second partial of $\mathcal G_\gamma L$ with respect to scale.
+These definitions describe the local maxima of of the edge strength with respect to the scale parameter.
 
 \subsection{Marching Cubes}
 \label{mcube}
-We note that the equations $\partial_t (\mathcal G_{\text{$\gamma$-norm}} L) =0 $ and $L_{vv} = 0$ define isosurfaces $\mathcal Z_1$ and $\mathcal Z_2$, embedded in $L$.
+\subsubsection{Introduction}
+We note that the equations $\partial_t (\mathcal G_{\gamma} L) =0 $ and $L_{vv} = 0$ define isosurfaces $\mathcal Z_1$ and $\mathcal Z_2$, embedded in $L$.
 Computing the intersection of these two surfaces and requiring the local maxima conditions $\partial_{tt} (\mathcal G_{\text{$\gamma$-norm}} L) < 0$ and $L_{vvv} < 0$ yields a family of isocurves, also embedded in $L$, which directly correspond to the edges in the image.
 
-However, since we only have access to $\partial_t (\mathcal G_{\text{$\gamma$-norm}} L)$ and $L_{vv}$ at the lattice points of $L$, we cannot solve for their intersection analytically.
-Instead, we rely on an approximation method to find the edges.
+However, since we only have access to $\partial_t (\mathcal G_\gamma L)$ and $L_{vv}$ at the lattice points of $L$, we cannot solve for their intersection analytically.
+Instead, we rely on an approximation algorithm to find the edges.
 We have chosen to implement the algorithm sketched by Lindeberg, a variation of the marching cubes algorithm.
 
+\subsubsection{Geometric Constants}
+To help us, we define the following constants describing the geometry of a cube.
+\begin{lstlisting}
+const cube_edges = [
+    # bottom edges
+    ((1,1,1), (1,2,1)), ((1,2,1), (2,2,1)),
+    ((2,2,1), (2,1,1)), ((2,1,1), (1,1,1)),
+
+    # side edges
+    ((1,1,1), (1,1,2)), ((1,2,1), (1,2,2)),
+    ((2,2,1), (2,2,2)), ((2,1,1), (2,1,2)),
+
+    # top edges
+    ((1,1,2), (1,2,2)), ((1,2,2), (2,2,2)),
+    ((2,2,2), (2,1,2)), ((2,1,2), (1,1,2))
+]
+
+const cube_faces =  [
+  ([ 0, 0,-1], ((1,1,1), (2,1,1), (1,2,1), (2,2,1))),
+  ([ 0,-1, 0], ((1,1,1), (2,1,1), (1,1,2), (2,1,2))),
+  ([ 1, 0, 0], ((2,1,1), (2,1,2), (2,2,2), (2,2,1))),
+  ([-1, 0, 0], ((1,1,1), (1,1,2), (1,2,1), (1,2,2))),
+  ([ 0, 1, 0], ((1,2,1), (2,2,1), (1,2,2), (2,2,2))),
+  ([ 0, 0, 1], ((1,1,2), (1,2,2), (2,2,2), (2,1,2)))
+]
+\end{lstlisting}
+The first defines each edge of the cube as pairs of coordinates, indexing at $1$, as Julia is $1$ indexed.
+The second defines each edge of face of the edge as a pair of the normal vector and the vertices on the corners of that face.
+
+\subsubsection{Recursive Flood Fill}
 In our implementation, $L$ is broken down into voxels with a value at every corner.
+We then use recursion to fill out the edge connected at that point.
 \begin{lstlisting}
 function marching_cubes(x, y, t, visited)
     if visited[x, y, t]
@@ -496,21 +568,21 @@ function marching_cubes(x, y, t, visited)
 
     visited[x, y, t] = true
 \end{lstlisting}
-Since edges are connected sets of points, we know that if a given voxel has already been visited it cannot be part of this edge, so we skip it.
-
+Since edges are connected sets of points, we know that if a given voxel has already been visited it cannot be part of this edge, so we skip it immediately.
+We next check that our sign conditions $L_{vvv} < 0$ and $\partial_{tt}(\mathcal G_\gamma L) < 0$ are each negative in at least one vertex of the voxel.
 \begin{lstlisting}
     const corners = (x:x+1, y:y+1, t:t+1)
 
-    # Note: Maybe they don't need to be in the same corner
     if !(any(view(GLtt, corners...)) && any(view(Lvvv, corners...)))
       return Set()
     end
 \end{lstlisting}
-We then check that our sign conditions $\mathcal S_1 < 0$ and $\mathcal S_2 < 0$ are each negative in at least one vertex of the voxel, otherwise there can be no maxima of $\mathcal Z_1$ and $\mathcal Z_2$ inside this voxel.
+We know that if there is no negative value in the second derivatives, there can be no maxima of $L_{v}$ and $\mathcal G_\gamma L$ inside this voxel, so we skip it immediately.
+Next, we check for zeros of $L_{vv}$ and $\partial_{t} (\mathcal G_\gamma L)$ as indicated by sign changes.
 \begin{lstlisting}
     @views Z1, Z2 = Lvv[corners...], GLt[corners...]
-    Z1_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
-    Z2_crossings = Array{Tuple{NTuple{3,Int}, NTuple{3,Int}, Array{Float64, 1}}, 1}()
+    Z1_crossings = []
+    Z2_crossings = []
 
     # Find all sign crossings w/ linear interpolation
     for (a, b) in cube_edges
@@ -523,9 +595,78 @@ We then check that our sign conditions $\mathcal S_1 < 0$ and $\mathcal S_2 < 0$
         end
     end
 \end{lstlisting}
+To do this, we iterate over every edge.
+Then for each differential entity we check if the endpoints of the edge differ in sign.
+If they do, we estimate the position of the zero crossing of the surface of that point using linear interpolation and save that point along with the edge along with the endpoints of the edge.
+Here is a visualization of one such result:
+\tdplotsetmaincoords{70}{120}
+\begin{center}
+  \begin{tabu}{cc}
+    \toprule
+    $L_{vv}$& $\mathcal{G}L_t$\\
+    \midrule
+    \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+      % The vertex at V
+      \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+      \tdplotsetcoord{O}{0}{0}{0}
 
-We then construct a list of edges where the signs of $\mathcal Z_1$ or $\mathcal Z_2$ differ at the endpoints of the edge.
-We then estimate the position of the zero crossing of the surface of that point using linear interpolation.
+      \draw[]
+      (0,0,0) -- (Px)
+      (0,0,0) -- (Py)
+      (0,0,0) -- (Pz);
+
+      \draw[] (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+      \draw[] (Pyz) -- (Py) -- (Pxy);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (P)!0.63!(Pyz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxy)!0.45!(Py) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxz)!0.4!(Pz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Px)!0.75!(O) $) {};
+
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (P) {};
+      \node[label=below left:$+$,fill,circle,inner sep=1.3pt] at (Px) {};
+      \node[label=below right:$-$,fill,circle,inner sep=1.3pt] at (Py) {};
+      \node[label=above:$-$,fill,circle,inner sep=1.3pt] at (Pz) {};
+      \node[label=below:$+$,fill,circle,inner sep=1.3pt] at (Pxy) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (Pyz) {};
+      \node[label=above left:$+$,fill,circle,inner sep=1.3pt] at (Pxz) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (O) {};
+    \end{tikzpicture} &
+    \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
+      % The vertex at V
+      \tdplotsetcoord{P}{sqrt(3)*5}{55}{45}
+      \tdplotsetcoord{O}{0}{0}{0}
+
+      \draw[]
+      (0,0,0) -- (Px)
+      (0,0,0) -- (Py)
+      (0,0,0) -- (Pz);
+
+      \draw[]
+      (Pxz) -- (P) -- (Pxy) -- (Px) -- (Pxz) -- (Pz) -- (Pyz) -- (P);
+      \draw[]
+      (Pyz) -- (Py) -- (Pxy);
+
+      \node[fill,circle,inner sep=1.75pt] at ($ (Px)!0.63!(Pxz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (O)!0.3!(Pz) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Pxy)!0.7!(P) $) {};
+      \node[fill,circle,inner sep=1.75pt] at ($ (Py)!0.3!(Pyz) $) {};
+
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (P) {};
+      \node[label=below left:$-$,fill,circle,inner sep=1.3pt] at (Px) {};
+      \node[label=below right:$-$,fill,circle,inner sep=1.3pt] at (Py) {};
+      \node[label=above:$+$,fill,circle,inner sep=1.3pt] at (Pz) {};
+      \node[label=below:$-$,fill,circle,inner sep=1.3pt] at (Pxy) {};
+      \node[label=above right:$+$,fill,circle,inner sep=1.3pt] at (Pyz) {};
+      \node[label=above left:$+$,fill,circle,inner sep=1.3pt] at (Pxz) {};
+      \node[label=above right:$-$,fill,circle,inner sep=1.3pt] at (O) {};
+    \end{tikzpicture}\\
+    \bottomrule
+  \end{tabu}
+\end{center}
+
+
+Then, for each face, we determine if there is an intersection of the two isosurfaces on that face.
 \begin{lstlisting}
     for (normal, face) in cube_faces
         Z1_zeros, Z2_zeros = [], []
@@ -541,21 +682,22 @@ We then estimate the position of the zero crossing of the surface of that point 
             end
         end
 \end{lstlisting}
-Then, for every face of the voxel, we collect all of the edges with a zero crossing that lie on that face.
+We collect all of the edges with a zero crossing contained in that face, as defined by its endpoints.
 \begin{lstlisting}
-        # Reject if there are more than two crossings for either invariant
         if !(length(Z1_zeros) == length(Z2_zeros) == 2)
             continue
         end
 \end{lstlisting}
 If there is only one edge with a zero crossing on that face, the face cannot have a zero crossing inside it, so we skip further processing on this face.
-If there are four zero crossings of either invariant on this face, then it is ambiguous how the isosurface intersects with the face, so we will skip it\footnote{In the future, we could try to resolve this situation, since there are only two possible cases.} Here is a visualization of one case satisfying these requirements:
+If there are four zero crossings of either invariant on this face, then the orientation of the zero crossing on that face is ambiguous, so we skip it\footnote{In the future, we could try to resolve this situation, since there are only two possible cases.}.
+If there are exactly two zero crossings on the edges of the face, then we can approximate the zero crossing on that face with the line connecting the two points.
+Here is a visualization of one case satisfying these requirements:
 
 \tdplotsetmaincoords{70}{120}
 \begin{center}
   \begin{tabu}{cc}
     \toprule
-    $\mathcal Z_1 $(i.e. $L_{vv}$)& $\mathcal Z_2$ (i.e. $\mathcal{G}L_t$)\\
+    $L_{vv}$& $\mathcal{G}L_t$\\
     \midrule
     \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
       % The vertex at V
@@ -623,9 +765,19 @@ If there are four zero crossings of either invariant on this face, then it is am
     \bottomrule
   \end{tabu}
 \end{center}
-We then continue our processing:
+
+Next, we check if the lines defined by our two zero conditions intersect.
 \begin{lstlisting}
-        # Check that the intersection lies on a face
+        intersect = segment_intersect(Z1_zeros..., Z2_zeros..., epsilon)
+        if isnull(intersect)
+            continue
+        end
+\end{lstlisting}
+To do this, we calculate the distance between the lines defined by each isosurface.
+If the segments are parallel, the distance is not defined, so we skip the face.
+Next, we check that the lines intersect.
+\begin{lstlisting}
+        const epsilon = 10 * eps()
         distance, midpoint = get(intersect)
         if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
             continue
@@ -633,8 +785,9 @@ We then continue our processing:
 
         push!(face_intersections, normal)
 \end{lstlisting}
-We check whether or not the lines caused by connecting the estimated zero crossings of the edges on the face intersect.
-If they do, we mark that face as featuring an intersection, as shown here:
+We do so by checking that the distance between the two lines is close to the machine epsilon, additionally we require that the intersection point of the two lines lies within the face itself.
+If the face fails these conditions, we skip it otherwise we register an intersection on that face.
+Here is a visualization of a case that satisfies our criterion:
 \begin{center}
   \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
     % The vertex at V
@@ -667,7 +820,7 @@ If they do, we mark that face as featuring an intersection, as shown here:
     \node[fill,circle,inner sep=1.7pt] at (F2) {};
   \end{tikzpicture}
 \end{center}
-Continuing our processing:
+If there are exactly two faces containing intersections, then the voxel contains an edge segment.
 \begin{lstlisting}
     if length(face_intersections) == 2
         for normal in face_intersections
@@ -679,8 +832,8 @@ Continuing our processing:
         push!(result, (x, y, t))
     end
 \end{lstlisting}
-If there are exactly two faces with zero crossings, then the voxel contains an edge segment.
-We then extend the line defined by connecting the estimated intersection points on each face into the neighboring voxels:
+We extend the line defined by connecting the estimated intersection points on each face into the neighboring voxels as shown here:\\[0em]
+
 \begin{center}
   \begin{tikzpicture}[scale=0.5,tdplot_main_coords]
     % The vertex at V
@@ -732,10 +885,15 @@ We then extend the line defined by connecting the estimated intersection points 
     \node[fill,circle,inner sep=1.7pt] at (F1) {};
     \node[fill,circle,inner sep=1.7pt] at (F2) {};
 
-  \end{tikzpicture}
+  \end{tikzpicture}\\[1.5em]
 \end{center}
+<<<<<<< HEAD
 The process is then repeated on the neighboring voxels until we have traversed the entire edge connected to this point. 
+=======
+>>>>>>> Update implementation section
 
+The process is then repeated on the neighboring voxels as defined by the extrapolation.
+This allows us to recursively trace out the full connected edge at this point.
 
 % \begin{tikzpicture}[tdplot_main_coords]
 %   % The vertex at V
