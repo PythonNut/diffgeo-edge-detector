@@ -11,7 +11,7 @@
 \usepackage{microtype}      % microtypography
 \usepackage{amsmath}
 \usepackage{mathtools}
-\usepackage{graphicx}
+\usepackage[draft]{graphicx}
 \usepackage{tabu}
 \usepackage{mathrsfs}
 \usepackage{morefloats}
@@ -21,6 +21,7 @@
 \usepackage{commath}
 \usepackage{graphicx}
 \usepackage{tikz,tikz-3dplot}
+\usepackage{longtable}
 \usetikzlibrary{calc}
 \usetikzlibrary{intersections}
 
@@ -41,7 +42,7 @@
 \lstset{
   basicstyle       = \ttfamily,
   columns          = fullflexible,
-  frame            = single,
+  frame            = none,
   breaklines       = true,
   language         = Julia,
   basicstyle       = \ttfamily,
@@ -72,45 +73,55 @@
 \end{abstract}
 
 \section{Introduction}
-Detecting edges in images has long been a problem with many unique solutions to approach it.
+
+Detecting edges in images has been a problem in image processing for a long time.
 Generally speaking, the majority of algorithms are usually checking the image for some of the following features:
 \begin{itemize}
 \item large discontinuities in luminance values
 \item discontinuities in different object orientations
 \item large discontinuities in the intensity gradient
 \end{itemize}
-Common methods for detecting edges in images usually consist of convolving a differential matrix with the image that calculates the image's derivatives in the horizontal or vertical direction.
-Algorithms like the Sobel, Canny, Prewitt, and Robert operators all work in a similar fashion, the only difference being which matrix they convolve with the image.
+In this paper, we will be using the scale space representation of an image to approach the edge detection problem.
+When we say scale, we refer to how much smoothing has been applied to the image. 
+The theory behind the scale space is that detecting one-dimensional image features, like edges, may be dependent on what scale we operate at \cite{Lindeberg1998}. 
+It follows that we can then define a scale space edge as a set of connected points that:
+\begin{itemize}
+\item have a gradient that takes on a local maximum value in the direction of the gradient\cite{Lindeberg1998}
+\item have an edge strength metric which is a local maximum over various scales\cite{Lindeberg1998}.
+\end{itemize}
+
+\section{Motivation}
+The motivation for this paper comes from observing the difference in quality of the scale space edge detection versus more conventional algorithms.
+Common methods for detecting edges in images usually consist of convolving a discrete derivative matrix with the image that calculates the image's derivatives in the horizontal and vertical directions.
+Algorithms like the Sobel, Canny, Roberts, and Prewitt do just exactly that. 
 The problem with these methods is that they are not very adaptable. 
-They generally will convolve a static matrix that is not dependent on the image, and could be potentially missing out on a lot of information. 
-For example, given an image \textbf{F}, the following computes the gradient of the image in the $x$ and $y$ direction using the Sobel operator
+For example, given an image ${F}$, the following computes the gradient of the image in the $x$ and $y$ direction using the Sobel operator
 \begin{equation}
-	\textbf{G}_x =
+	{G}_x =
 	\begin{bmatrix}
 		+1 &0 &-1 \\
 		+2 &0 &-2 \\
 		+1 &0 &-1 
 	\end{bmatrix}
-	* \textbf{F}, \;
-	\textbf{G}_y =
+	* {F}, \;
+	{G}_y =
 	\begin{bmatrix}
 		+1 &+2 &+1 \\
 		0 &0 &0 \\
 		-1 &-2 &-1 
 	\end{bmatrix}
-	* \textbf{F}
+	* {F}
 \end{equation}
-This is why for our edge detection method, we will be using the scale space approach.
-The benefit of using a scale space approach for edge detection, is we have the ability to classify the strength of the edges in the image.
-This allows for a range of edges from very large immediate changes in intensity to very gradual.
-
-\section{Motivation}
+Our algorithm will consist of convolving the ando5 matrix, which is more rotationally symmetric than the other operators listed above, with the image. 
+This convolution will be be performed at multiple scales to evaluate the criteria necessary for classifying a point as an edge point in the scale space. 
+We then run a marching cubes algorithm to connect the local maxima and list our edges based on strength. 
+The ability to list edges and classify their strengths is the main advantage that the scale space edge algorithm has over conventional methods. 
 
 \section{Scale Space and Its Derivatives}
 To understand how exactly we detect images in the scale space, we must first define what the scale space is.
 If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as 
 \begin{equation}
-  L(x;t) = g(x,y;t) * f(x,y)
+  L(x,y;t) = g(x,y;t) * f(x,y)
 \end{equation}
 Here $t$ represents the scale parameter, and can be thought of how much smoothing is applied to the function. The function $g$ is the Gaussian kernel given by
 \begin{equation}
@@ -122,7 +133,7 @@ Spatial derivatives are relatively simple being defined as the following
   L_{x^{\alpha}y^{\beta}}(\cdot;t) = \partial_{x^{\alpha}y^{\beta}}L(\cdot;t) = g_{x^{\alpha}y^{\beta}}(\cdot;t) * f(\cdot)
 \end{equation}
 However, when taking the partial derivative with respect to the scale $t$, it becomes more interesting.
-The scale space representation collection is a solution for the diffusion equation. Therefore is has the useful property of 
+The scale space representation collection is a solution for the diffusion equation. Therefore is has the useful property of \cite{Lindeberg1993}
 \begin{equation}
   \partial_t L = \frac{1}{2} \nabla^2 L = \frac{1}{2} (\partial_{xx} + \partial_{yy})L
 \end{equation}
@@ -137,7 +148,7 @@ The following is the discrete version of the scale space operating on the functi
 \begin{equation}
   L(x;t) = (T(\cdot;t) * f(\cdot))(x;t)
 \end{equation}
-In this expression, $T$ represents the discrete version of the Gaussian kernel and is further evaluated as
+In this expression, $T$ represents the discrete version of the Gaussian kernel and is further evaluated as \cite{Lindeberg1993}
 \begin{equation}
   T(n;t) = e^{-t}I_n(t)
 \end{equation}
@@ -152,7 +163,7 @@ The two dimensional scale space representation for discrete variables is given b
   L(x,y;t) = \sum_{m=-\infty}^{\infty}\sum_{n=-\infty}^{\infty}T(m;t)T(n;t)f(x-m,y-n)
 \end{equation}
 Even with the discrete case, the scale space representation must still satisfy the semidiscretized version of the diffusion equation.
-Therefore by taking a scale derivative of the function we must have the following
+Therefore by taking a scale derivative of the function we must have the following \cite{Lindeberg1993}
 \begin{equation}
   \partial_t L = \frac{1}{2}((1-\gamma)\nabla^2_5L+\gamma\nabla^2_\times L)
 \end{equation}
@@ -166,8 +177,9 @@ where $\gamma \in [0,1]$ is a hyperparameter and,
 Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what discrete scale spaces and their derivatives look like, we can start to define what an edge is.
 
 \section{Defining an Edge in Scale Space}
-\begin{table}[H]
+\begin{table}[h]
   \caption{Gradient magnitude}
+  \label{t_gma}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -182,8 +194,9 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
     \bottomrule
 \end{tabu}
 \end{table}
-\begin{table}[H]
+\begin{table}[h]
   \caption{First scale derivative of gradient magnitude}
+  \label{t_tgma}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -198,8 +211,9 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
     \bottomrule
 \end{tabu}
 \end{table}
-\begin{table}[H]
+\begin{table}[h]
   \caption{Second scale derivative of the gradient magnitude}
+  \label{t_ttgma}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -214,8 +228,9 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
     \bottomrule
 \end{tabu}
 \end{table}
-\begin{table}[H]
+\begin{table}[h]
   \caption{Maxima of scale space in the $v$ direction}
+  \label{t_v}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -230,8 +245,9 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
     \bottomrule
 \end{tabu}
 \end{table}
-\begin{table}[H]
+\begin{table}[h]
   \caption{The second derivative of the scale space with respect to the $v$ direction}
+  \label{t_vv}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -246,8 +262,9 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
     \bottomrule
 \end{tabu}
 \end{table}
-\begin{table}[H]
+\begin{table}[h]
   \caption{The third derivative of the scale space with respect to the $v$ direction}
+  \label{t_vvv}
   \centering
   \tabulinesep=0.1em
   \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
@@ -264,7 +281,7 @@ Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what dis
 \end{table}
 A useful thing to do when dealing with image features is to set up a coordinate system in terms of the local directional derivatives.
 In this case, we do the same thing as the paper does and setup a coordinate system $(u,v)$ at any point $(x_0,y_0)$ on the image.
-Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0)$, and the $u$-axis is perpendicular to the gradient direction at the same point. So then we define necessary angles as
+Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0)$, and the $u$-axis is perpendicular to the gradient direction at the same point. So then we define necessary angles as \cite{Lindeberg1998}
 \begin{equation}
   \begin{pmatrix}
     \cos{\alpha} \\
@@ -277,27 +294,29 @@ Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0
   \end{pmatrix}
   \Bigg|_{(x_0,y_0)}
 \end{equation}
-With our angles defined, we can then define our $(u,v)$ coordinate system by taking the respective partial derivatives of our spatial coordinate system.
+With our angles defined, we can then define our $(u,v)$ coordinate system by taking the respective partial derivatives of our spatial coordinate system
 \begin{align}
   \partial_u &= \sin{\alpha}\; \partial_x - \cos{\alpha}\; \partial_y \\
   \partial_v &= \cos{\alpha}\; \partial_x + \sin{\alpha}\; \partial_y
 \end{align}
-So then we can define our partials of $L$ with respect to this new $(u,v)$ coordinate system. So then we define an edge in this coordinate system with the following conditions.
+So then we can define our partials of $L$ with respect to this new $(u,v)$ coordinate system. The results for $L_v$ can be found on page \pageref{t_v}. So then we define an edge in this coordinate system with the following conditions \cite{Lindeberg1998}
 \begin{equation} \label{eq:c1}
   \begin{aligned}
     L_{vv} &= 0 \\
     L_{vvv} &< 0
   \end{aligned}
 \end{equation}
-The way we can then represent these conditions in terms of spatial derivatives is as follows
+The way we can then represent these conditions in terms of spatial derivatives is as follows \cite{Lindeberg1998}
 \begin{equation}
   \begin{aligned}
     L_{vv} &= L_x^2L_{xx}+2L_xL_yL_{xy}+L_y^2L_{yy} = 0 \\
     L_{vvv} &= L_x^3L_{xxx} +3L_x^2L_yL_{xxy}+3L_xL_y^2L_{xyy}+L_y^3L_{yyy} < 0
   \end{aligned}
 \end{equation}
+The results for $L_{vv}$ can be found on page \pageref{t_vv}.
+The results for $L_{vvv}$ can be found on page \pageref{t_vvv}.
 This is useful for determining edges at a single scale, but if we are to determine edges over multiple scales, we must also develop an edge strength metric, $\varepsilon_{norm}L$.
-Thus this adds two more conditions that must be satisified for an edge to be classified in the scale space. 
+Thus this adds two more conditions that must be satisified for an edge to be classified in the scale space \cite{Lindeberg1998}
 \begin{equation} \label{eq:c2}
   \begin{aligned}
     \partial_t(\varepsilon_{norm}L(x,y;t)) = 0\\
@@ -307,31 +326,37 @@ Thus this adds two more conditions that must be satisified for an edge to be cla
 Then equation \ref{eq:c1} in conjunction with \ref{eq:c2} form the neccessary constraints for us to define an edge in the scale space.
 Now we must define what we mean by edge strength and give a clearer idea of $\varepsilon_{norm}$.
 
-The approach we took was to let our edge strength meteric be defined by the gradient magnitude that has been normalized by our $\gamma$ factor.
-In this case we can define it as 
+The approach we took was to let our edge strength metric be defined by the gradient magnitude that has been normalized by our $\gamma$ factor. 
+Our results for the following calculations can be found on page \pageref{t_gma}.
+In this case we can define our normalized gradient magnitude as \cite{Lindeberg1998}
 \begin{align}
-  G_{\gamma}L &= L_{g,\gamma}^2 \\
+  G_{\gamma}L &= L_{v,\gamma}^2 \\
   &= t^{\gamma}(L_x^2+L_y^2)
 \end{align}
-The first scale derivative of the gradient magnitude is calculated as follows
+
+The first scale derivative of the gradient magnitude results are found on page \pageref{t_tgma}. 
+Its calculations are as follows \cite{Lindeberg1998}
 \begin{equation}
   \partial_t (G_{\gamma}L) = \gamma t^{\gamma-1}(L_x^2+L_y^2) + t^{\gamma}(L_x(L_{xxx}+L_{yyy})+L_y(L_{xxy} + L_{yyy}))
 \end{equation}
-Then the second scale derivative of the gradient magnitude is
+Then the second scale derivative of the gradient magnitude results are found on page \pageref{t_ttgma}.
+Its calculations are as follows \cite{Lindeberg1998}
 \begin{equation}
   \begin{aligned}
-    \partial_{tt} &= \gamma(\gamma-1)t^{\gamma-2}(L_x^2+L_y^2) \\
-     &+ 2\gamma t^{\gamma-1}(L_x(L_{xyy}+L_{xxx})+L_y(L_{xxy}+L_{yyy})) \\
-     &+\frac{t^{\gamma}}{2}\big((L_{xxx}+L_{xyy})^2+(L_{xxy}+L_{yyy})^2\big) \\
-     &+ L_x(L_{xxxxx}+2L_{xxxyy}+L_{xyyyy}) \\
-     &+L_y(L_{xxxxy}+2L_{xxyyy}+L_{yyyyy})\big)
+    \partial_{tt}(G_{\gamma}L) &= \gamma(\gamma-1)t^{\gamma-2}(L_x^2+L_y^2) \\
+     & \hspace{.5pt}+ 2\gamma t^{\gamma-1}(L_x(L_{xyy}+L_{xxx})+L_y(L_{xxy}+L_{yyy})) \\
+     & \hspace{.5pt}+\frac{t^{\gamma}}{2}\big((L_{xxx}+L_{xyy})^2+(L_{xxy}+L_{yyy})^2\big) \\
+     & \hspace{.5pt}+ L_x(L_{xxxxx}+2L_{xxxyy}+L_{xyyyy}) \\
+     & \hspace{.5pt}+ L_y(L_{xxxxy}+2L_{xxyyy}+L_{yyyyy})\big)
   \end{aligned}
 \end{equation}
-Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by
+Then the strength of the edges is found by computing the path integral over the maximal connected edge $\Gamma$ given by \cite{Lindeberg1998}
 \begin{equation}
   G(\Gamma) = \int_{(x;t) \in \Gamma} \sqrt{(G_{\gamma}L)(x;t)} \,\, \dif s
 \end{equation}
 where $\dif s^2=\dif x^2+\dif y^2$.
+
+We then perform a marching cubes algorithm that will connect local points that we have identified as edge points. The details for this can be found on page \pageref{mcube}.
 
 \section{Implementation}
 For our implementation we will be using the following image to run our tests on
@@ -454,7 +479,7 @@ const GLtt = @. (gamma*(gamma - 1)*scales3^(gamma - 2)*(Lx^2 + Ly^2) + 2gamma*sc
 With these calculations we now can check all the conditions necessary to define an edge in scale space. 
 
 \subsection{Marching Cubes}
-
+\label{mcube}
 We note that the equations $\partial_t (\mathcal G_{\text{$\gamma$-norm}} L) =0 $ and $L_{vv} = 0$ define isosurfaces $\mathcal Z_1$ and $\mathcal Z_2$, embedded in $L$.
 Computing the intersection of these two surfaces and requiring the local maxima conditions $\partial_{tt} (\mathcal G_{\text{$\gamma$-norm}} L) < 0$ and $L_{vvv} < 0$ yields a family of isocurves, also embedded in $L$, which directly correspond to the edges in the image.
 
@@ -709,7 +734,7 @@ We then extend the line defined by connecting the estimated intersection points 
 
   \end{tikzpicture}
 \end{center}
-The process is then repeated on the neighboring voxels until we have traversed the entire edge connected to this point.
+The process is then repeated on the neighboring voxels until we have traversed the entire edge connected to this point. 
 
 
 % \begin{tikzpicture}[tdplot_main_coords]
@@ -736,10 +761,12 @@ The process is then repeated on the neighboring voxels until we have traversed t
 %   \node[label=above left:$Pxz$,fill,circle,inner sep=1.75pt] at (Pxz) {};
 %   \node[label=above right:$O$,fill,circle,inner sep=1.75pt] at (O) {};
 % \end{tikzpicture}
+
 \section*{Appendix}
 
 % \lstinputlisting[caption={edge\_detect.jl},label=edge_detect,frame=none]{edge_detect.jl}
 
-\section*{References}
+\bibliography{bibliography}{}
+\bibliographystyle{plain}
 
 \end{document}
