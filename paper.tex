@@ -85,7 +85,7 @@ Scale refers to how much smoothing is applied to the image.
 The theory behind the scale space representation is that detecting one-dimensional image features, like edges, may be dependent on what scale we operate at \cite{Lindeberg1998}. 
 It follows that we can then define a scale space edge as a set of connected points that:
 \begin{itemize}
-\item have a gradient that takes on a local maximum value in the direction of the gradient\cite{Lindeberg1998}
+\item have a gradient that assumes a local maximum value in the direction of the gradient\cite{Lindeberg1998}
 \item have an edge strength metric which is a local maximum over various scales\cite{Lindeberg1998}.
 \end{itemize}
 
@@ -118,7 +118,7 @@ We then run a marching cubes algorithm to connect the local maxima and list our 
 The ability to list edges and classify their strengths is one of the advantages that the scale space edge algorithm has over conventional methods. 
 
 \section{Scale Space and Its Derivatives}
-To understand how exactly we detect images in the scale space, we must first define what the scale space is.
+To understand how exactly we detect edges in the scale space, we must first define what the scale space is.
 If we have a continuous function of multiple variables such as $f(x,y)$, then we define the scale space representation of such a function as the following convolution
 \begin{equation}
   L(x,y;t) = g(x,y;t) * f(x,y)
@@ -138,13 +138,13 @@ The scale space representation collection is a solution for the diffusion equati
   \partial_t L = \frac{1}{2} \nabla^2 L = \frac{1}{2} (\partial_{xx} + \partial_{yy})L
 \end{equation}
 with the initial condition of $L(x,y;0) = f(x,y)$.
-So now, scale derivatives can be represented as spatial derivatives. 
+So we can now represent scale derivatives as spatial derivatives. 
 
-Now all these representations and operators are useful for continuous functions, but the images we deal with are discrete and contain quantized inetsnity values.
+Now all these representations and operators are useful for continuous functions, but the images we deal with are discrete and contain quantized intensity values.
 So we must now understand how these operations and properties apply to the discrete domain.
 
 The scale space representation is still defined in a similar fashion.
-The following is the discrete version of the scale space operating on the function $f(x)$, which only has a single spatial variable.
+The following is the discrete version of the scale space operating on the function $f(x)$
 \begin{equation}
   L(x;t) = (T(\cdot;t) * f(\cdot))(x;t)
 \end{equation}
@@ -157,7 +157,7 @@ where $I_n$ is the modified Bessel functions of integer order given by
   I_n(x) = i^{-n}J_{n}(ix) = \sum_{m=0}^{\infty}\frac{1}{m!\Gamma(m+n+1)}\left(\frac{x}{2}\right)^{2m+n}
 \end{equation}
 Now that the one dimensional case is understood for the scale space, we can expand this to two dimensions.
-After all, images are compsed of two dimesnisons, so it makes sense that these operators can act on two dimensional functions.
+After all, images are composed of two dimensions, so it makes sense that these operators can act on two dimensional functions.
 The two dimensional scale space representation for discrete variables is given by the following
 \begin{equation}
   L(x,y;t) = \sum_{m=-\infty}^{\infty}\sum_{n=-\infty}^{\infty}T(m;t)T(n;t)f(x-m,y-n)
@@ -177,108 +177,6 @@ where $\gamma \in [0,1]$ is a hyperparameter and,
 Note that $f_{-1,1}$ represents $f(x-1, y+1)$. Now that we have defined what discrete scale spaces and their derivatives look like, we can start to define what an edge is.
 
 \section{Defining an Edge in Scale Space}
-\begin{table}[h]
-  \caption{Gradient magnitude}
-  \label{t_gma}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GL_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
-\begin{table}[h]
-  \caption{First scale derivative of gradient magnitude}
-  \label{t_tgma}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
-\begin{table}[h]
-  \caption{Second scale derivative of the gradient magnitude}
-  \label{t_ttgma}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
-\begin{table}[h]
-  \caption{Maxima of scale space in the $v$ direction}
-  \label{t_v}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
-\begin{table}[h]
-  \caption{The second derivative of the scale space with respect to the $v$ direction}
-  \label{t_vv}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
-\begin{table}[h]
-  \caption{The third derivative of the scale space with respect to the $v$ direction}
-  \label{t_vvv}
-  \centering
-  \tabulinesep=0.1em
-  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
-    \toprule
-    & Lena & Mandrill & Peppers\\
-    \midrule
-    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_0.1}}}\\
-    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_1.7}}}\\
-    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_18.7}}}\\
-    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_93.6}}}\\
-    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_256.0}}}\\
-    \bottomrule
-\end{tabu}
-\end{table}
 A useful thing to do when dealing with image features is to set up a coordinate system in terms of the local directional derivatives.
 In this case, we do the same thing as the paper does and setup a coordinate system $(u,v)$ at any point $(x_0,y_0)$ on the image.
 Here, the $v$-axis is parallel to the gradient direction at the point $(x_0, y_0)$, and the $u$-axis is perpendicular to the gradient direction at the same point. So then we define necessary angles as \cite{Lindeberg1998}
@@ -316,7 +214,7 @@ The way we can then represent these conditions in terms of spatial derivatives i
 The results for $L_{vv}$ can be found on page \pageref{t_vv}.
 The results for $L_{vvv}$ can be found on page \pageref{t_vvv}.
 This is useful for determining edges at a single scale, but if we are to determine edges over multiple scales, we must also develop an edge strength metric, $\varepsilon_{norm}L$.
-Thus this adds two more conditions that must be satisified for an edge to be classified in the scale space \cite{Lindeberg1998}
+Thus this adds two more conditions that must be satisfied for an edge to be classified in the scale space \cite{Lindeberg1998}
 \begin{equation} \label{eq:c2}
   \begin{aligned}
     \partial_t(\varepsilon_{norm}L(x,y;t)) = 0\\
@@ -913,7 +811,108 @@ This allows us to recursively trace out the full connected edge at this point.
 % \end{tikzpicture}
 
 \section*{Appendix}
-
+\begin{table}[H]
+  \caption{Gradient magnitude}
+  \label{t_gma}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GL_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GL_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GL_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GL_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{First scale derivative of gradient magnitude}
+  \label{t_tgma}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GLt_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLt_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLt_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{Second scale derivative of the gradient magnitude}
+  \label{t_ttgma}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_GLtt_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_GLtt_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_GLtt_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{Maxima of scale space in the $v$ direction}
+  \label{t_v}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lv_maxima_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lv_maxima_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lv_maxima_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{The second derivative of the scale space with respect to the $v$ direction}
+  \label{t_vv}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvv_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvv_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvv_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
+\begin{table}[H]
+  \caption{The third derivative of the scale space with respect to the $v$ direction}
+  \label{t_vvv}
+  \centering
+  \tabulinesep=0.1em
+  \begin{tabu}to \textwidth{cX[c,m]X[c,m]X[c,m]}
+    \toprule
+    & Lena & Mandrill & Peppers\\
+    \midrule
+    $t = 0.1$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_0.1}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_0.1}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_0.1}}}\\
+    $t = 1.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_1.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_1.7}}} & \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_1.7}}}\\
+    $t = 18.7$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_18.7}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_18.7}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_18.7}}}\\
+    $t = 93.6$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_93.6}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_93.6}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_93.6}}}\\
+    $t = 256.0$ & \includegraphics[height=11em]{{{Images/lena/lena_Lvvv_256.0}}} & \includegraphics[height=11em]{{{Images/mandrill/mandrill_Lvvv_256.0}}} &  \includegraphics[height=11em]{{{Images/peppers/peppers_Lvvv_256.0}}}\\
+    \bottomrule
+\end{tabu}
+\end{table}
 % \lstinputlisting[caption={edge\_detect.jl},label=edge_detect,frame=none]{edge_detect.jl}
 
 \bibliography{bibliography}{}
