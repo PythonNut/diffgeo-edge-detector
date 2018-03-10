@@ -203,13 +203,13 @@ function marching_cubes(x, y, t, visited)
         end
 
         # Check the intersection of the segments defined by the two lines
+        const epsilon = 10 * eps()
         distance_check = line_distance(Z1_zeros..., Z2_zeros..., epsilon)
         if isnull(distance_check)
             continue
         end
 
         # Check that the intersection lies on a face
-        const epsilon = 10 * eps()
         distance, midpoint = get(distance_check)
         if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
             continue

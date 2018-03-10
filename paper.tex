@@ -768,6 +768,7 @@ Here is a visualization of one case satisfying these requirements:
 
 Next, we check if the lines defined by our two zero conditions intersect.
 \begin{lstlisting}
+        const epsilon = 10 * eps()
         intersect = segment_intersect(Z1_zeros..., Z2_zeros..., epsilon)
         if isnull(intersect)
             continue
@@ -777,7 +778,6 @@ To do this, we calculate the distance between the lines defined by each isosurfa
 If the segments are parallel, the distance is not defined, so we skip the face.
 Next, we check that the lines intersect.
 \begin{lstlisting}
-        const epsilon = 10 * eps()
         distance, midpoint = get(intersect)
         if distance > epsilon || !all(1 - epsilon .<= midpoint .<= 2 + epsilon)
             continue
